@@ -405,21 +405,13 @@ export default function Estoque() {
 }
 
 function NewProductModal({ onClose }: { onClose: () => void }) {
-  const { addProduto, tamanhosCustom, addTamanhoCustom, uploadImagem } = useStore();
+  const { addProduto, uploadImagem } = useStore();
   const [salvando, setSalvando] = useState(false);
-  const [novoTamanho, setNovoTamanho] = useState('');
-  const todosOsTamanhos = [...TAMANHOS_PADRAO, ...tamanhosCustom];
-
-  const [tamanhosSelecionados, setTamanhosSelecionados] = useState<string[]>([]);
-  const [quantidadesPorTamanho, setQuantidadesPorTamanho] = useState<Record<string, number>>({});
 
   const [formData, setFormData] = useState({
     nome: '',
     categoria: 'Camiseta' as Categoria,
     cor: '',
-    precoCusto: 0,
-    precoVenda: 0,
-    imagem: '',
   });
 
   const [imagemPreview, setImagemPreview] = useState('');
@@ -434,40 +426,26 @@ function NewProductModal({ onClose }: { onClose: () => void }) {
     reader.readAsDataURL(file);
   };
 
-  const toggleTamanho = (t: string) => {
-    setTamanhosSelecionados(prev => {
-      if (prev.includes(t)) {
-        setQuantidadesPorTamanho(q => { const { [t]: _, ...rest } = q; return rest; });
-        return prev.filter(x => x !== t);
-      }
-      setQuantidadesPorTamanho(q => ({ ...q, [t]: 0 }));
-      return [...prev, t];
-    });
-  };
-
-  const handleAddTamanho = () => {
-    const t = novoTamanho.trim().toUpperCase();
-    if (!t) return;
-    if (!todosOsTamanhos.includes(t)) addTamanhoCustom(t);
-    if (!tamanhosSelecionados.includes(t)) {
-      setTamanhosSelecionados(prev => [...prev, t]);
-      setQuantidadesPorTamanho(q => ({ ...q, [t]: 0 }));
-    }
-    setNovoTamanho('');
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (tamanhosSelecionados.length === 0) return;
     setSalvando(true);
     try {
-      let dados = { ...formData };
+      let imagem = '';
       if (imagemFile) {
-        dados.imagem = await uploadImagem(imagemFile);
+        imagem = await uploadImagem(imagemFile);
       }
-      for (const tam of tamanhosSelecionados) {
-        await addProduto({ ...dados, tamanho: tam, quantidade: quantidadesPorTamanho[tam] || 0 });
-      }
+      // Cria o produto com um primeiro tamanho "P" e quantidade 0
+      // O usuario adiciona mais tamanhos pela planilha e ajusta precos na Tabela de Precos
+      await addProduto({
+        nome: formData.nome,
+        categoria: formData.categoria,
+        cor: formData.cor,
+        tamanho: 'P',
+        quantidade: 0,
+        precoCusto: 0,
+        precoVenda: 0,
+        imagem: imagem || undefined,
+      });
       onClose();
     } catch {
       alert('Erro ao salvar produto.');
@@ -478,26 +456,28 @@ function NewProductModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
-        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center shrink-0">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
           <h2 className="text-xl font-bold text-slate-800">Novo Produto</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-slate-700 overflow-y-auto flex-1">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-slate-700">
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Nome do Produto</label>
+            <input
+              required
+              type="text"
+              value={formData.nome}
+              onChange={e => setFormData({ ...formData, nome: e.target.value })}
+              placeholder="Ex: Camiseta Manga Curta"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <label className="block text-sm font-medium mb-1.5">Nome do Produto</label>
-              <input
-                required
-                type="text"
-                value={formData.nome}
-                onChange={e => setFormData({ ...formData, nome: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors"
-              />
-            </div>
             <div>
               <label className="block text-sm font-medium mb-1.5">Categoria</label>
               <select
@@ -518,86 +498,7 @@ function NewProductModal({ onClose }: { onClose: () => void }) {
                 type="text"
                 value={formData.cor}
                 onChange={e => setFormData({ ...formData, cor: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1.5">
-              Tamanhos
-              {tamanhosSelecionados.length > 0 && (
-                <span className="text-violet-600"> ({tamanhosSelecionados.length})</span>
-              )}
-            </label>
-            <div className="flex flex-wrap gap-1.5">
-              {todosOsTamanhos.map(t => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => toggleTamanho(t)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition-all ${
-                    tamanhosSelecionados.includes(t)
-                      ? 'border-violet-500 bg-violet-50 text-violet-700'
-                      : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
-                  }`}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-2 mt-2">
-              <input
-                type="text"
-                placeholder="Tamanho personalizado..."
-                value={novoTamanho}
-                onChange={e => setNovoTamanho(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddTamanho(); } }}
-                className="flex-1 px-2 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
-              />
-              <button type="button" onClick={handleAddTamanho} className="px-3 py-1.5 text-xs font-medium bg-violet-100 text-violet-700 rounded-lg hover:bg-violet-200 transition-colors">
-                + Criar
-              </button>
-            </div>
-
-            {tamanhosSelecionados.length > 0 && (
-              <div className="mt-3 p-3 bg-violet-50/50 border border-violet-100 rounded-xl">
-                <label className="block text-xs font-bold text-violet-800 mb-2">Estoque por tamanho</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {tamanhosSelecionados.map(t => (
-                    <div key={t} className="flex flex-col bg-white p-1.5 rounded-lg border border-violet-200/50">
-                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 text-center">{t}</span>
-                      <input
-                        type="number"
-                        min="0"
-                        value={quantidadesPorTamanho[t] ?? ''}
-                        onChange={e => setQuantidadesPorTamanho(q => ({ ...q, [t]: Number(e.target.value) }))}
-                        className="w-full text-center px-1 py-1 bg-slate-50 border border-slate-200 rounded text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500"
-                        placeholder="0"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Custo (R$)</label>
-              <input
-                required type="number" step="0.01" min="0"
-                value={formData.precoCusto}
-                onChange={e => setFormData({ ...formData, precoCusto: Number(e.target.value) })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Venda (R$)</label>
-              <input
-                required type="number" step="0.01" min="0"
-                value={formData.precoVenda}
-                onChange={e => setFormData({ ...formData, precoVenda: Number(e.target.value) })}
+                placeholder="Ex: Branca"
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
               />
             </div>
@@ -610,7 +511,7 @@ function NewProductModal({ onClose }: { onClose: () => void }) {
                 <img src={imagemPreview} alt="Preview" className="w-full h-full object-cover" />
                 <button
                   type="button"
-                  onClick={() => { setImagemPreview(''); setImagemFile(null); setFormData(f => ({ ...f, imagem: '' })); }}
+                  onClick={() => { setImagemPreview(''); setImagemFile(null); }}
                   className="absolute top-2 right-2 bg-white/90 hover:bg-white text-slate-600 hover:text-red-500 p-1.5 rounded-full shadow transition-colors"
                 >
                   <X className="w-4 h-4" />
@@ -625,16 +526,20 @@ function NewProductModal({ onClose }: { onClose: () => void }) {
             )}
           </div>
 
-          <div className="pt-4 flex justify-end gap-3">
+          <p className="text-[11px] text-slate-400 bg-slate-50 rounded-lg px-3 py-2">
+            Apos cadastrar, adicione tamanhos e estoque pela planilha e ajuste precos na Tabela de Precos.
+          </p>
+
+          <div className="pt-2 flex justify-end gap-3">
             <button type="button" onClick={onClose} className="px-4 py-2 hover:bg-slate-100 text-slate-600 rounded-xl font-medium transition-colors">
               Cancelar
             </button>
             <button
               type="submit"
-              disabled={tamanhosSelecionados.length === 0 || salvando}
+              disabled={!formData.nome.trim() || salvando}
               className="px-6 py-2 bg-violet-600 hover:bg-violet-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl font-medium transition-colors shadow-sm shadow-violet-200 disabled:shadow-none"
             >
-              {salvando ? 'Salvando...' : tamanhosSelecionados.length <= 1 ? 'Cadastrar' : `Cadastrar ${tamanhosSelecionados.length} Tamanhos`}
+              {salvando ? 'Salvando...' : 'Cadastrar'}
             </button>
           </div>
         </form>
