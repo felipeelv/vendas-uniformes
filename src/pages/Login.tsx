@@ -30,8 +30,8 @@ export default function Login() {
 
       <div className="z-10 w-full max-w-sm animate-in fade-in slide-in-from-bottom-8 duration-700">
         <div className="text-center mb-8">
-          <div className="w-20 h-20 rounded-2xl bg-white shadow-2xl flex items-center justify-center mx-auto mb-6">
-            <span className="text-slate-900 font-extrabold text-4xl leading-none -mt-1">e</span>
+          <div className="w-20 h-20 rounded-2xl bg-white shadow-2xl flex items-center justify-center mx-auto mb-6 overflow-hidden p-3">
+            <img src="/logo.png" alt="Colégio Eleve" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-3xl font-black text-white mb-2">Sistema Interno</h1>
           <p className="text-slate-400">Faça login para continuar</p>
