@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { supabase } from '../lib/supabase';
 
 export const TAMANHOS_PADRAO = ['4', '6', '8', '10', '12', '14', '16', 'PP', 'P', 'M', 'G', 'GG', 'XG'] as const;
 export type Categoria = 'Camiseta' | 'Calça' | 'Bermuda' | 'Moletom' | 'Casaco';
@@ -49,133 +50,290 @@ export interface Usuario {
   role: 'Admin' | 'Vendedor';
 }
 
+// Helpers para converter entre camelCase (app) e snake_case (DB)
+function produtoFromDb(row: any): Produto {
+  return {
+    id: row.id,
+    nome: row.nome,
+    categoria: row.categoria,
+    tamanho: row.tamanho,
+    cor: row.cor,
+    quantidade: row.quantidade,
+    precoCusto: Number(row.preco_custo),
+    precoVenda: Number(row.preco_venda),
+    imagem: row.imagem || undefined,
+  };
+}
+
+function produtoToDb(p: Partial<Produto>) {
+  const row: any = {};
+  if (p.nome !== undefined) row.nome = p.nome;
+  if (p.categoria !== undefined) row.categoria = p.categoria;
+  if (p.tamanho !== undefined) row.tamanho = p.tamanho;
+  if (p.cor !== undefined) row.cor = p.cor;
+  if (p.quantidade !== undefined) row.quantidade = p.quantidade;
+  if (p.precoCusto !== undefined) row.preco_custo = p.precoCusto;
+  if (p.precoVenda !== undefined) row.preco_venda = p.precoVenda;
+  if (p.imagem !== undefined) row.imagem = p.imagem;
+  return row;
+}
+
+function vendaFromDb(row: any): Venda {
+  return {
+    id: row.id,
+    produtoId: row.produto_id || '',
+    produtoNome: row.produto_nome,
+    quantidade: row.quantidade,
+    valorTotal: Number(row.valor_total),
+    data: row.data,
+    vendedorId: row.vendedor_id || '',
+    vendedorNome: row.vendedor_nome,
+    clienteId: row.cliente_id || undefined,
+    clienteNome: row.cliente_nome || undefined,
+  };
+}
+
 interface StoreState {
+  loading: boolean;
+  initialized: boolean;
+  init: () => Promise<void>;
+
   usuarios: Usuario[];
   usuarioAtivo: Usuario | null;
   setUsuarioAtivo: (id: string) => void;
+  addUsuario: (usuario: Omit<Usuario, 'id'>) => Promise<void>;
+  updateUsuario: (id: string, usuario: Partial<Usuario>) => Promise<void>;
+  deleteUsuario: (id: string) => Promise<void>;
+
   produtos: Produto[];
+  addProduto: (produto: Omit<Produto, 'id'>) => Promise<void>;
+  updateProduto: (id: string, produto: Partial<Produto>) => Promise<void>;
+  deleteProduto: (id: string) => Promise<void>;
+  registrarEntrada: (id: string, quantidade: number) => Promise<void>;
+  registrarSaida: (id: string, quantidade: number, valorTotal: number, clienteId?: string, clienteNome?: string) => Promise<void>;
+
   clientes: Cliente[];
+  addCliente: (cliente: Omit<Cliente, 'id'>) => Promise<void>;
+  updateCliente: (id: string, cliente: Partial<Cliente>) => Promise<void>;
+  deleteCliente: (id: string) => Promise<void>;
+
   vendas: Venda[];
   despesas: Despesa[];
-  addDespesa: (despesa: Omit<Despesa, 'id'>) => void;
-  addProduto: (produto: Omit<Produto, 'id'>) => void;
-  updateProduto: (id: string, produto: Partial<Produto>) => void;
-  deleteProduto: (id: string) => void;
-  addCliente: (cliente: Omit<Cliente, 'id'>) => void;
-  updateCliente: (id: string, cliente: Partial<Cliente>) => void;
-  deleteCliente: (id: string) => void;
-  registrarEntrada: (id: string, quantidade: number) => void;
-  registrarSaida: (id: string, quantidade: number, valorTotal: number, clienteId?: string, clienteNome?: string) => void;
-  addUsuario: (usuario: Omit<Usuario, 'id'>) => void;
-  updateUsuario: (id: string, usuario: Partial<Usuario>) => void;
-  deleteUsuario: (id: string) => void;
+  addDespesa: (despesa: Omit<Despesa, 'id'>) => Promise<void>;
+
   tamanhosCustom: string[];
-  addTamanhoCustom: (tamanho: string) => void;
+  addTamanhoCustom: (tamanho: string) => Promise<void>;
+
+  uploadImagem: (file: File) => Promise<string>;
 }
 
-const mockUsuarios: Usuario[] = [
-  { id: 'u1', nome: 'Felipe (Gerente)', role: 'Admin' },
-  { id: 'u2', nome: 'Carlos (Vendedor)', role: 'Vendedor' },
-  { id: 'u3', nome: 'Ana (Vendedora)', role: 'Vendedor' },
-];
+export const useStore = create<StoreState>((set, get) => ({
+  loading: true,
+  initialized: false,
 
-const mockClientes: Cliente[] = [
-  { id: 'c1', nome: 'Mariana Silva (Mãe do Pedro)', telefone: '(11) 98765-4321', documento: '123.456.789-00' },
-  { id: 'c2', nome: 'Roberto Alves', telefone: '(11) 91234-5678', documento: '987.654.321-11' },
-];
+  // ==================== INIT ====================
+  init: async () => {
+    if (get().initialized) return;
 
-const mockProdutos: Produto[] = [
-  { id: '1', nome: 'Camiseta Padrão Manga Curta', categoria: 'Camiseta', tamanho: 'M', cor: 'Branca', quantidade: 45, precoCusto: 25.0, precoVenda: 45.0, imagem: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&q=80' },
-  { id: '2', nome: 'Calça de Frio Oficial', categoria: 'Calça', tamanho: 'G', cor: 'Azul Marinho', quantidade: 12, precoCusto: 40.0, precoVenda: 89.9, imagem: 'https://images.unsplash.com/photo-1542272454315-4c01d7abdf4a?w=400&q=80' },
-  { id: '3', nome: 'Moletom com Capuz', categoria: 'Moletom', tamanho: 'P', cor: 'Cinza', quantidade: 5, precoCusto: 60.0, precoVenda: 120.0, imagem: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=400&q=80' },
-  { id: '4', nome: 'Bermuda Tactel Esportiva', categoria: 'Bermuda', tamanho: 'Infantil', cor: 'Azul', quantidade: 30, precoCusto: 20.0, precoVenda: 35.0, imagem: 'https://images.unsplash.com/photo-1591195853828-11db59a44f6b?w=400&q=80' },
-];
+    const [
+      { data: usuarios },
+      { data: produtos },
+      { data: clientes },
+      { data: vendas },
+      { data: despesas },
+      { data: tamanhosCustom },
+    ] = await Promise.all([
+      supabase.from('usuarios').select('*').order('created_at'),
+      supabase.from('produtos').select('*').order('created_at'),
+      supabase.from('clientes').select('*').order('created_at'),
+      supabase.from('vendas').select('*').order('data', { ascending: false }),
+      supabase.from('despesas').select('*').order('data', { ascending: false }),
+      supabase.from('tamanhos_custom').select('*').order('created_at'),
+    ]);
 
-const mockVendas: Venda[] = [
-  { id: 'v1', produtoId: '1', produtoNome: 'Camiseta Padrão Manga Curta', quantidade: 2, valorTotal: 90.0, data: new Date(Date.now() - 86400000 * 2).toISOString(), vendedorId: 'u2', vendedorNome: 'Carlos (Vendedor)', clienteId: 'c1', clienteNome: 'Mariana Silva (Mãe do Pedro)' },
-  { id: 'v2', produtoId: '4', produtoNome: 'Bermuda Tactel Esportiva', quantidade: 1, valorTotal: 35.0, data: new Date(Date.now() - 86400000 * 1).toISOString(), vendedorId: 'u3', vendedorNome: 'Ana (Vendedora)', clienteId: 'c2', clienteNome: 'Roberto Alves' },
-];
+    const mappedUsuarios = (usuarios || []).map((u: any) => ({ id: u.id, nome: u.nome, role: u.role })) as Usuario[];
+    const mappedProdutos = (produtos || []).map(produtoFromDb);
+    const mappedClientes = (clientes || []).map((c: any) => ({ id: c.id, nome: c.nome, telefone: c.telefone, documento: c.documento })) as Cliente[];
+    const mappedVendas = (vendas || []).map(vendaFromDb);
+    const mappedDespesas = (despesas || []).map((d: any) => ({ id: d.id, descricao: d.descricao, valor: Number(d.valor), data: d.data, categoria: d.categoria })) as Despesa[];
+    const mappedTamanhos = (tamanhosCustom || []).map((t: any) => t.tamanho as string);
 
-const mockDespesas: Despesa[] = [
-  { id: 'd1', descricao: 'Aluguel do Espaço', valor: 2500.0, data: new Date(Date.now() - 86400000 * 5).toISOString(), categoria: 'Fixa' },
-];
+    set({
+      usuarios: mappedUsuarios,
+      usuarioAtivo: mappedUsuarios[0] || null,
+      produtos: mappedProdutos,
+      clientes: mappedClientes,
+      vendas: mappedVendas,
+      despesas: mappedDespesas,
+      tamanhosCustom: mappedTamanhos,
+      loading: false,
+      initialized: true,
+    });
+  },
 
-export const useStore = create<StoreState>((set) => ({
-  usuarios: mockUsuarios,
-  usuarioAtivo: mockUsuarios[0],
-  setUsuarioAtivo: (id) => set((state) => ({ usuarioAtivo: state.usuarios.find(u => u.id === id) || state.usuarioAtivo })),
-  addUsuario: (usuario) => set(state => ({ usuarios: [...state.usuarios, { ...usuario, id: Math.random().toString(36).substr(2, 9) }] })),
-  updateUsuario: (id, data) => set(state => {
-    const updated = state.usuarios.map(u => u.id === id ? { ...u, ...data } : u);
-    const active = state.usuarioAtivo?.id === id ? { ...state.usuarioAtivo, ...data } : state.usuarioAtivo;
-    return { usuarios: updated, usuarioAtivo: active as Usuario };
-  }),
-  deleteUsuario: (id) => set(state => ({
-    usuarios: state.usuarios.filter(u => u.id !== id),
-    usuarioAtivo: state.usuarioAtivo?.id === id ? state.usuarios.find(u => u.id !== id) || null : state.usuarioAtivo
+  // ==================== USUARIOS ====================
+  usuarios: [],
+  usuarioAtivo: null,
+
+  setUsuarioAtivo: (id) => set((state) => ({
+    usuarioAtivo: state.usuarios.find(u => u.id === id) || state.usuarioAtivo
   })),
+
+  addUsuario: async (usuario) => {
+    const { data, error } = await supabase.from('usuarios').insert(usuario).select().single();
+    if (error) throw error;
+    const novo: Usuario = { id: data.id, nome: data.nome, role: data.role };
+    set(state => ({ usuarios: [...state.usuarios, novo] }));
+  },
+
+  updateUsuario: async (id, updates) => {
+    const { error } = await supabase.from('usuarios').update(updates).eq('id', id);
+    if (error) throw error;
+    set(state => {
+      const updated = state.usuarios.map(u => u.id === id ? { ...u, ...updates } : u);
+      const active = state.usuarioAtivo?.id === id ? { ...state.usuarioAtivo, ...updates } : state.usuarioAtivo;
+      return { usuarios: updated, usuarioAtivo: active as Usuario };
+    });
+  },
+
+  deleteUsuario: async (id) => {
+    const { error } = await supabase.from('usuarios').delete().eq('id', id);
+    if (error) throw error;
+    set(state => ({
+      usuarios: state.usuarios.filter(u => u.id !== id),
+      usuarioAtivo: state.usuarioAtivo?.id === id ? state.usuarios.find(u => u.id !== id) || null : state.usuarioAtivo,
+    }));
+  },
+
+  // ==================== PRODUTOS ====================
+  produtos: [],
+
+  addProduto: async (produto) => {
+    const { data, error } = await supabase.from('produtos').insert(produtoToDb(produto)).select().single();
+    if (error) throw error;
+    set(state => ({ produtos: [...state.produtos, produtoFromDb(data)] }));
+  },
+
+  updateProduto: async (id, updates) => {
+    const { error } = await supabase.from('produtos').update(produtoToDb(updates)).eq('id', id);
+    if (error) throw error;
+    set(state => ({
+      produtos: state.produtos.map(p => p.id === id ? { ...p, ...updates } : p),
+    }));
+  },
+
+  deleteProduto: async (id) => {
+    const { error } = await supabase.from('produtos').delete().eq('id', id);
+    if (error) throw error;
+    set(state => ({ produtos: state.produtos.filter(p => p.id !== id) }));
+  },
+
+  registrarEntrada: async (id, qtd) => {
+    const produto = get().produtos.find(p => p.id === id);
+    if (!produto) return;
+    const novaQtd = produto.quantidade + qtd;
+    const { error } = await supabase.from('produtos').update({ quantidade: novaQtd }).eq('id', id);
+    if (error) throw error;
+    set(state => ({
+      produtos: state.produtos.map(p => p.id === id ? { ...p, quantidade: novaQtd } : p),
+    }));
+  },
+
+  registrarSaida: async (id, qtd, valorTotal, clienteId, clienteNome) => {
+    const produto = get().produtos.find(p => p.id === id);
+    const vendedor = get().usuarioAtivo;
+    if (!produto || !vendedor) return;
+
+    const novaQtd = Math.max(0, produto.quantidade - qtd);
+
+    const vendaRow = {
+      produto_id: id,
+      produto_nome: produto.nome,
+      quantidade: qtd,
+      valor_total: valorTotal,
+      data: new Date().toISOString(),
+      vendedor_id: vendedor.id,
+      vendedor_nome: vendedor.nome,
+      cliente_id: clienteId || null,
+      cliente_nome: clienteNome || null,
+    };
+
+    const [{ error: errVenda, data: vendaData }, { error: errProd }] = await Promise.all([
+      supabase.from('vendas').insert(vendaRow).select().single(),
+      supabase.from('produtos').update({ quantidade: novaQtd }).eq('id', id),
+    ]);
+
+    if (errVenda) throw errVenda;
+    if (errProd) throw errProd;
+
+    set(state => ({
+      produtos: state.produtos.map(p => p.id === id ? { ...p, quantidade: novaQtd } : p),
+      vendas: [vendaFromDb(vendaData), ...state.vendas],
+    }));
+  },
+
+  // ==================== CLIENTES ====================
+  clientes: [],
+
+  addCliente: async (cliente) => {
+    const { data, error } = await supabase.from('clientes').insert(cliente).select().single();
+    if (error) throw error;
+    const novo: Cliente = { id: data.id, nome: data.nome, telefone: data.telefone, documento: data.documento };
+    set(state => ({ clientes: [...state.clientes, novo] }));
+  },
+
+  updateCliente: async (id, updates) => {
+    const { error } = await supabase.from('clientes').update(updates).eq('id', id);
+    if (error) throw error;
+    set(state => ({
+      clientes: state.clientes.map(c => c.id === id ? { ...c, ...updates } : c),
+    }));
+  },
+
+  deleteCliente: async (id) => {
+    const { error } = await supabase.from('clientes').delete().eq('id', id);
+    if (error) throw error;
+    set(state => ({ clientes: state.clientes.filter(c => c.id !== id) }));
+  },
+
+  // ==================== VENDAS & DESPESAS ====================
+  vendas: [],
+  despesas: [],
+
+  addDespesa: async (despesa) => {
+    const { data, error } = await supabase.from('despesas').insert(despesa).select().single();
+    if (error) throw error;
+    const nova: Despesa = { id: data.id, descricao: data.descricao, valor: Number(data.valor), data: data.data, categoria: data.categoria };
+    set(state => ({ despesas: [nova, ...state.despesas] }));
+  },
+
+  // ==================== TAMANHOS CUSTOM ====================
   tamanhosCustom: [],
-  addTamanhoCustom: (tamanho) => set(state => ({
-    tamanhosCustom: state.tamanhosCustom.includes(tamanho) ? state.tamanhosCustom : [...state.tamanhosCustom, tamanho]
-  })),
-  produtos: mockProdutos,
-  clientes: mockClientes,
-  vendas: mockVendas,
-  despesas: mockDespesas,
-  addDespesa: (despesa) =>
-    set((state) => ({
-      despesas: [...state.despesas, { ...despesa, id: Math.random().toString(36).substr(2, 9) }],
-    })),
-  addProduto: (produto) =>
-    set((state) => ({
-      produtos: [...state.produtos, { ...produto, id: Math.random().toString(36).substr(2, 9) }],
-    })),
-  updateProduto: (id, updatedFields) =>
-    set((state) => ({
-      produtos: state.produtos.map((p) => (p.id === id ? { ...p, ...updatedFields } : p)),
-    })),
-  deleteProduto: (id) =>
-    set((state) => ({
-      produtos: state.produtos.filter((p) => p.id !== id),
-    })),
-  addCliente: (cliente) =>
-    set((state) => ({
-      clientes: [...state.clientes, { ...cliente, id: Math.random().toString(36).substr(2, 9) }],
-    })),
-  updateCliente: (id, updatedFields) =>
-    set((state) => ({
-      clientes: state.clientes.map((c) => (c.id === id ? { ...c, ...updatedFields } : c)),
-    })),
-  deleteCliente: (id) =>
-    set((state) => ({
-      clientes: state.clientes.filter((c) => c.id !== id),
-    })),
-  registrarEntrada: (id, qtd) =>
-    set((state) => ({
-      produtos: state.produtos.map((p) => (p.id === id ? { ...p, quantidade: p.quantidade + qtd } : p)),
-    })),
-  registrarSaida: (id, qtd, valorTotal, clienteId, clienteNome) =>
-    set((state) => {
-      const produto = state.produtos.find(p => p.id === id);
-      const vendedor = state.usuarioAtivo;
-      if (!produto || !vendedor) return state;
-      
-      const novaVenda: Venda = {
-        id: Math.random().toString(36).substr(2, 9),
-        produtoId: id,
-        produtoNome: produto.nome,
-        quantidade: qtd,
-        valorTotal,
-        data: new Date().toISOString(),
-        vendedorId: vendedor.id,
-        vendedorNome: vendedor.nome,
-        clienteId,
-        clienteNome
-      };
 
-      return {
-        produtos: state.produtos.map((p) => (p.id === id ? { ...p, quantidade: Math.max(0, p.quantidade - qtd) } : p)),
-        vendas: [...state.vendas, novaVenda]
-      };
-    }),
+  addTamanhoCustom: async (tamanho) => {
+    if (get().tamanhosCustom.includes(tamanho)) return;
+    const { error } = await supabase.from('tamanhos_custom').insert({ tamanho });
+    if (error && error.code !== '23505') throw error; // ignore duplicate
+    set(state => ({
+      tamanhosCustom: state.tamanhosCustom.includes(tamanho) ? state.tamanhosCustom : [...state.tamanhosCustom, tamanho],
+    }));
+  },
+
+  // ==================== UPLOAD DE IMAGEM ====================
+  uploadImagem: async (file: File) => {
+    const ext = file.name.split('.').pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${ext}`;
+
+    const { error } = await supabase.storage
+      .from('produto-imagens')
+      .upload(fileName, file);
+
+    if (error) throw error;
+
+    const { data: urlData } = supabase.storage
+      .from('produto-imagens')
+      .getPublicUrl(fileName);
+
+    return urlData.publicUrl;
+  },
 }));

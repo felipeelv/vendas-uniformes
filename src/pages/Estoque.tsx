@@ -141,8 +141,9 @@ export default function Estoque() {
 }
 
 function ProdutoModal({ produto, onClose }: { produto: Produto | null, onClose: () => void }) {
-  const { addProduto, updateProduto, tamanhosCustom, addTamanhoCustom, produtos } = useStore();
+  const { addProduto, updateProduto, tamanhosCustom, addTamanhoCustom, produtos, uploadImagem } = useStore();
   const [novoTamanho, setNovoTamanho] = useState('');
+  const [salvando, setSalvando] = useState(false);
   const isEditing = !!produto;
 
   const todosOsTamanhos: string[] = [...TAMANHOS_PADRAO, ...tamanhosCustom];
@@ -165,15 +166,16 @@ function ProdutoModal({ produto, onClose }: { produto: Produto | null, onClose: 
   });
 
   const [imagemPreview, setImagemPreview] = useState<string>(produto?.imagem || '');
+  const [imagemFile, setImagemFile] = useState<File | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setImagemFile(file);
     const reader = new FileReader();
     reader.onloadend = () => {
-      const base64 = reader.result as string;
-      setFormData(prev => ({ ...prev, imagem: base64 }));
-      setImagemPreview(base64);
+      setImagemPreview(reader.result as string);
     };
     reader.readAsDataURL(file);
   };
@@ -181,6 +183,7 @@ function ProdutoModal({ produto, onClose }: { produto: Produto | null, onClose: 
   const handleRemoveImage = () => {
     setFormData(prev => ({ ...prev, imagem: '' }));
     setImagemPreview('');
+    setImagemFile(null);
   };
 
   const toggleTamanho = (t: string) => {
@@ -210,34 +213,52 @@ function ProdutoModal({ produto, onClose }: { produto: Produto | null, onClose: 
     setNovoTamanho('');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (tamanhosSelecionados.length === 0) return;
 
-    if (isEditing) {
-      const tamanhoOriginal = produto!.tamanho;
-      const tamanhoPrincipal = tamanhosSelecionados.includes(tamanhoOriginal) ? tamanhoOriginal : tamanhosSelecionados[0];
+    setSalvando(true);
+    try {
+      let dadosFinais = { ...formData };
 
-      updateProduto(produto!.id, { 
-        ...formData, 
-        tamanho: tamanhoPrincipal,
-        quantidade: quantidadesPorTamanho[tamanhoPrincipal] || 0
-      } as any);
+      // Upload da imagem para o Supabase Storage se houver arquivo novo
+      if (imagemFile) {
+        setUploadingImage(true);
+        const url = await uploadImagem(imagemFile);
+        dadosFinais.imagem = url;
+        setUploadingImage(false);
+      }
 
-      tamanhosSelecionados.filter(t => t !== tamanhoPrincipal).forEach(tam => {
-        const existente = produtos.find(p => p.nome === formData.nome && p.categoria === formData.categoria && p.cor === formData.cor && p.tamanho === tam && p.id !== produto!.id);
-        if (existente) {
-           updateProduto(existente.id, { ...formData, tamanho: tam, quantidade: quantidadesPorTamanho[tam] || 0 } as any);
-        } else {
-           addProduto({ ...formData, tamanho: tam, quantidade: quantidadesPorTamanho[tam] || 0 } as any);
+      if (isEditing) {
+        const tamanhoOriginal = produto!.tamanho;
+        const tamanhoPrincipal = tamanhosSelecionados.includes(tamanhoOriginal) ? tamanhoOriginal : tamanhosSelecionados[0];
+
+        await updateProduto(produto!.id, {
+          ...dadosFinais,
+          tamanho: tamanhoPrincipal,
+          quantidade: quantidadesPorTamanho[tamanhoPrincipal] || 0
+        } as any);
+
+        for (const tam of tamanhosSelecionados.filter(t => t !== tamanhoPrincipal)) {
+          const existente = produtos.find(p => p.nome === formData.nome && p.categoria === formData.categoria && p.cor === formData.cor && p.tamanho === tam && p.id !== produto!.id);
+          if (existente) {
+            await updateProduto(existente.id, { ...dadosFinais, tamanho: tam, quantidade: quantidadesPorTamanho[tam] || 0 } as any);
+          } else {
+            await addProduto({ ...dadosFinais, tamanho: tam, quantidade: quantidadesPorTamanho[tam] || 0 } as any);
+          }
         }
-      });
-    } else {
-      tamanhosSelecionados.forEach(tam => {
-        addProduto({ ...formData, tamanho: tam, quantidade: quantidadesPorTamanho[tam] || 0 } as any);
-      });
+      } else {
+        for (const tam of tamanhosSelecionados) {
+          await addProduto({ ...dadosFinais, tamanho: tam, quantidade: quantidadesPorTamanho[tam] || 0 } as any);
+        }
+      }
+      onClose();
+    } catch (err) {
+      console.error('Erro ao salvar produto:', err);
+      alert('Erro ao salvar produto. Tente novamente.');
+    } finally {
+      setSalvando(false);
     }
-    onClose();
   };
 
   return (
@@ -412,10 +433,12 @@ function ProdutoModal({ produto, onClose }: { produto: Produto | null, onClose: 
             </button>
             <button
               type="submit"
-              disabled={tamanhosSelecionados.length === 0}
+              disabled={tamanhosSelecionados.length === 0 || salvando}
               className="px-6 py-2 bg-violet-600 hover:bg-violet-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl font-medium transition-colors shadow-sm shadow-violet-200 disabled:shadow-none"
             >
-              {isEditing ? 'Salvar' : tamanhosSelecionados.length <= 1 ? 'Cadastrar' : `Cadastrar ${tamanhosSelecionados.length} Tamanhos`}
+              {salvando
+                ? (uploadingImage ? 'Enviando imagem...' : 'Salvando...')
+                : isEditing ? 'Salvar' : tamanhosSelecionados.length <= 1 ? 'Cadastrar' : `Cadastrar ${tamanhosSelecionados.length} Tamanhos`}
             </button>
           </div>
         </form>
