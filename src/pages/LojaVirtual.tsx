@@ -1,9 +1,10 @@
 import { useState, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import type { Produto, Categoria } from '../store/useStore';
 
 import StoreHeader from '../components/loja/StoreHeader';
-import StoreBanner from '../components/loja/StoreBanner';
+// StoreBanner removido — layout estilo marketplace
 import CategoryFilter from '../components/loja/CategoryFilter';
 import ProductCard from '../components/loja/ProductCard';
 import ProductCardSkeleton from '../components/loja/ProductCardSkeleton';
@@ -37,6 +38,7 @@ export default function LojaVirtual() {
   const [formData, setFormData] = useState({ nome: '', telefone: '', aluno: '' });
 
   const productsRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   // Derived data
   const produtoGroups = useMemo(() => {
@@ -182,9 +184,7 @@ export default function LojaVirtual() {
     setCartOpen(false);
   };
 
-  const scrollToProducts = () => {
-    productsRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  // scrollToProducts removido — produtos já estão visíveis direto
 
   // --- RENDERS ---
 
@@ -215,7 +215,7 @@ export default function LojaVirtual() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#f5f5f5] flex flex-col font-sans">
       <StoreHeader
         totalPecas={totalPecas}
         onOpenCart={() => setCartOpen(true)}
@@ -223,23 +223,29 @@ export default function LojaVirtual() {
         onSearchChange={setSearchQuery}
       />
 
-      <StoreBanner onScrollToProducts={scrollToProducts} />
-
-      {/* Products Section */}
-      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12" ref={productsRef}>
-        {/* Section header + filters */}
-        <div className="mb-8">
-          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 mb-1">
-            Nossos Uniformes
-          </h2>
-          <p className="text-slate-500 text-sm mb-6">
-            Encontre o uniforme ideal para seu filho(a)
-          </p>
+      {/* Category bar */}
+      <nav className="bg-white border-b border-slate-200 shadow-sm">
+        <div className="max-w-6xl mx-auto px-4">
           <CategoryFilter
             selected={categoryFilter}
             onChange={setCategoryFilter}
             counts={categoryCounts}
           />
+        </div>
+      </nav>
+
+      {/* Products Section */}
+      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8" ref={productsRef}>
+        {/* Results info */}
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="text-lg sm:text-xl font-bold text-slate-800">
+              {categoryFilter === 'all' ? 'Todos os Uniformes' : categoryFilter + 's'}
+            </h2>
+            <p className="text-xs text-slate-400 font-medium mt-0.5">
+              {filteredGroups.length} {filteredGroups.length === 1 ? 'produto encontrado' : 'produtos encontrados'}
+            </p>
+          </div>
         </div>
 
         {/* Product Grid */}
@@ -286,22 +292,30 @@ export default function LojaVirtual() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-slate-900 text-white py-10 mt-auto">
+      <footer className="bg-white border-t border-slate-200 py-8 mt-auto">
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <img src="/logo.png" alt="Eleve" className="w-8 h-8 object-contain brightness-0 invert opacity-60" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-              <div>
-                <span className="font-bold text-sm text-white/80">Colégio Eleve</span>
-                <span className="block text-[10px] text-white/40 font-medium">Loja Virtual de Uniformes</span>
-              </div>
+              <img src="/logo.png" alt="Eleve" className="w-7 h-7 object-contain opacity-40" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+              <span className="text-xs text-slate-400 font-medium">
+                Colégio Eleve — Loja Virtual de Uniformes
+              </span>
             </div>
-            <div className="flex items-center gap-6 text-[11px] font-medium text-white/40">
-              <span>Pagamento via PIX</span>
-              <span className="w-1 h-1 rounded-full bg-white/20" />
-              <span>Entrega na escola</span>
-              <span className="w-1 h-1 rounded-full bg-white/20" />
-              <span>Troca garantida</span>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 text-[11px] font-medium text-slate-400">
+                <span>PIX</span>
+                <span className="w-0.5 h-0.5 rounded-full bg-slate-300" />
+                <span>Entrega na escola</span>
+                <span className="w-0.5 h-0.5 rounded-full bg-slate-300" />
+                <span>Troca garantida</span>
+              </div>
+              <span className="w-px h-4 bg-slate-200 hidden sm:block" />
+              <button
+                onClick={() => navigate('/login')}
+                className="text-[11px] text-slate-400 hover:text-slate-600 font-medium transition-colors hidden sm:block"
+              >
+                Sistema Interno
+              </button>
             </div>
           </div>
         </div>

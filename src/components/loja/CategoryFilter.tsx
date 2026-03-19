@@ -17,7 +17,7 @@ interface CategoryFilterProps {
 
 export default function CategoryFilter({ selected, onChange, counts }: CategoryFilterProps) {
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap">
+    <div className="flex gap-1 overflow-x-auto scrollbar-hide py-2.5 -mx-4 px-4 sm:mx-0 sm:px-0 sm:gap-0">
       {CATEGORIAS.map(({ label, value }) => {
         const count = value === 'all'
           ? Object.values(counts).reduce((a, b) => a + b, 0)
@@ -30,18 +30,13 @@ export default function CategoryFilter({ selected, onChange, counts }: CategoryF
           <button
             key={value}
             onClick={() => onChange(value)}
-            className={`shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all whitespace-nowrap ${
+            className={`shrink-0 px-4 sm:px-5 py-2 text-sm font-medium transition-all whitespace-nowrap border-b-2 ${
               isActive
-                ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20'
-                : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                ? 'text-emerald-700 border-emerald-500 font-bold'
+                : 'text-slate-500 border-transparent hover:text-slate-700 hover:border-slate-300'
             }`}
           >
             {label}
-            <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-md ${
-              isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
-            }`}>
-              {count}
-            </span>
           </button>
         );
       })}
