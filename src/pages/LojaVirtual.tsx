@@ -94,6 +94,7 @@ export default function LojaVirtual() {
     } else {
       await addCliente({
         nome: `${formData.nome} (Resp: ${formData.aluno})`,
+        turma: '',
         telefone: formData.telefone,
         documento: 'Site'
       });
