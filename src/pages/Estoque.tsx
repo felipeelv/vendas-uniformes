@@ -69,7 +69,6 @@ export default function Estoque() {
                 <th className="px-6 py-4 font-medium">Categoria</th>
                 <th className="px-6 py-4 font-medium">Tamanho & Cor</th>
                 <th className="px-6 py-4 font-medium text-right">Estoque</th>
-                <th className="px-6 py-4 font-medium text-right">Preço de Venda</th>
                 <th className="px-6 py-4 font-medium text-center">Ações</th>
               </tr>
             </thead>
@@ -95,9 +94,6 @@ export default function Estoque() {
                       {produto.quantidade} un
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-right font-medium text-slate-900">
-                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(produto.precoVenda)}
-                  </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-center gap-2">
                       <button 
@@ -120,7 +116,7 @@ export default function Estoque() {
               ))}
               {filteredProdutos.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                  <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
                     Nenhum produto encontrado.
                   </td>
                 </tr>

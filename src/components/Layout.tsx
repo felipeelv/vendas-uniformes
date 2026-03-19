@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { TrendingUp, LayoutDashboard, ShoppingCart, LogOut, PackageSearch, PieChart, Menu, X, Users, LineChart, UsersRound, Lock, Upload } from 'lucide-react';
+import { TrendingUp, LayoutDashboard, ShoppingCart, LogOut, PackageSearch, PieChart, Menu, X, Users, LineChart, UsersRound, Lock, Upload, DollarSign } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
 type UserRole = 'Admin' | 'Gerente' | 'Vendedor';
@@ -12,6 +12,7 @@ const sidebarLinks = [
   { path: '/importar-alunos', icon: Upload, label: 'Importar Alunos', roles: ['Admin', 'Gerente'] as UserRole[] },
   { path: '/vendedores', icon: Users, label: 'Usuários', roles: ['Admin'] as UserRole[] },
   { path: '/estoque', icon: PackageSearch, label: 'Estoque de Loja', roles: ['Admin', 'Gerente'] as UserRole[] },
+  { path: '/precos', icon: DollarSign, label: 'Tabela de Precos', roles: ['Admin', 'Gerente'] as UserRole[] },
   { path: '/financeiro', icon: PieChart, label: 'Financeiro', roles: ['Admin'] as UserRole[] },
   { path: '/relatorios', icon: LineChart, label: 'Desempenho & Relatórios', roles: ['Admin'] as UserRole[] },
   { path: '/fechamento', icon: Lock, label: 'Fechamento de Caixa', roles: ['Admin', 'Gerente', 'Vendedor'] as UserRole[] },
