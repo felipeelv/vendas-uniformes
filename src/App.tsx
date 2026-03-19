@@ -12,6 +12,7 @@ import Clientes from './pages/Clientes';
 import Vendedores from './pages/Vendedores';
 import LojaVirtual from './pages/LojaVirtual';
 import FechamentoCaixa from './pages/FechamentoCaixa';
+import ImportarAlunos from './pages/ImportarAlunos';
 import { useStore } from './store/useStore';
 
 type UserRole = 'Admin' | 'Gerente' | 'Vendedor';
@@ -61,6 +62,7 @@ function App() {
             <Route element={<RotaPorRole roles={['Admin', 'Gerente']} />}>
               <Route path="/estoque" element={<Estoque />} />
               <Route path="/clientes" element={<Clientes />} />
+              <Route path="/importar-alunos" element={<ImportarAlunos />} />
             </Route>
 
             {/* Somente Admin */}

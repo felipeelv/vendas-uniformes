@@ -22,6 +22,7 @@ export interface Produto {
 export interface Cliente {
   id: string;
   nome: string;
+  turma: string;
   telefone: string;
   documento: string;
 }
@@ -117,6 +118,7 @@ interface StoreState {
   updateProduto: (id: string, produto: Partial<Produto>) => void;
   deleteProduto: (id: string) => void;
   addCliente: (cliente: Omit<Cliente, 'id'>) => void;
+  importClientes: (clientes: Omit<Cliente, 'id'>[]) => Promise<{ inseridos: number; duplicados: number }>;
   updateCliente: (id: string, cliente: Partial<Cliente>) => void;
   deleteCliente: (id: string) => void;
   registrarEntrada: (id: string, quantidade: number) => void;
@@ -247,7 +249,7 @@ export const useStore = create<StoreState>((set, get) => ({
       loaded: true,
       usuarios: (usuariosRes.data || []).map(u => ({ id: u.id, nome: u.nome, role: u.role, senha: u.senha })),
       produtos: (produtosRes.data || []).map(dbToProduto),
-      clientes: (clientesRes.data || []).map(c => ({ id: c.id, nome: c.nome, telefone: c.telefone, documento: c.documento })),
+      clientes: (clientesRes.data || []).map(c => ({ id: c.id, nome: c.nome, turma: c.turma || '', telefone: c.telefone || '', documento: c.documento || '' })),
       vendas,
       despesas: (despesasRes.data || []).map(dbToDespesa),
       fechamentosCaixa: (fechamentosRes.data || []).map(dbToFechamento),
@@ -363,12 +365,39 @@ export const useStore = create<StoreState>((set, get) => ({
     if (!supabase) return;
     const { data } = await supabase.from('clientes').insert({
       nome: cliente.nome,
-      telefone: cliente.telefone,
-      documento: cliente.documento,
+      turma: cliente.turma || '',
+      telefone: cliente.telefone || '',
+      documento: cliente.documento || '',
     }).select().single();
     if (data) {
-      set(state => ({ clientes: [...state.clientes, { id: data.id, nome: data.nome, telefone: data.telefone, documento: data.documento }] }));
+      set(state => ({ clientes: [...state.clientes, { id: data.id, nome: data.nome, turma: data.turma || '', telefone: data.telefone || '', documento: data.documento || '' }] }));
     }
+  },
+
+  importClientes: async (lista) => {
+    if (!supabase) return { inseridos: 0, duplicados: 0 };
+    const existentes = get().clientes;
+    const nomesExistentes = new Set(existentes.map(c => c.nome.toLowerCase().trim()));
+
+    const novos = lista.filter(c => !nomesExistentes.has(c.nome.toLowerCase().trim()));
+    const duplicados = lista.length - novos.length;
+
+    if (novos.length === 0) return { inseridos: 0, duplicados };
+
+    const rows = novos.map(c => ({
+      nome: c.nome.trim(),
+      turma: c.turma?.trim() || '',
+      telefone: c.telefone?.trim() || '',
+      documento: c.documento?.trim() || '',
+    }));
+
+    const { data } = await supabase.from('clientes').insert(rows).select();
+    if (data) {
+      const novosClientes = data.map((c: any) => ({ id: c.id, nome: c.nome, turma: c.turma || '', telefone: c.telefone || '', documento: c.documento || '' }));
+      set(state => ({ clientes: [...state.clientes, ...novosClientes] }));
+    }
+
+    return { inseridos: data?.length || 0, duplicados };
   },
 
   updateCliente: async (id, updatedFields) => {

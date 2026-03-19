@@ -68,6 +68,7 @@ export default function Clientes() {
             <thead>
               <tr className="bg-white text-slate-500 text-xs uppercase tracking-wider border-b border-slate-100">
                 <th className="px-6 py-4 font-semibold">Nome / Aluno</th>
+                <th className="px-6 py-4 font-semibold">Turma</th>
                 <th className="px-6 py-4 font-semibold">Telefone</th>
                 <th className="px-6 py-4 font-semibold">Documento</th>
                 <th className="px-6 py-4 font-semibold text-right">Ações</th>
@@ -78,6 +79,9 @@ export default function Clientes() {
                 <tr key={cliente.id} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="px-6 py-4">
                     <p className="font-semibold text-slate-900">{cliente.nome}</p>
+                  </td>
+                  <td className="px-6 py-4 text-slate-600">
+                    {cliente.turma || '-'}
                   </td>
                   <td className="px-6 py-4 text-slate-600">
                     {cliente.telefone || '-'}
@@ -107,7 +111,7 @@ export default function Clientes() {
               ))}
               {filteredClientes.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
+                  <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
                     Nenhum cliente cadastrado ou encontrado na busca.
                   </td>
                 </tr>
@@ -135,6 +139,7 @@ function ClienteModal({ cliente, onClose, onSave }: {
 }) {
   const [formData, setFormData] = useState({
     nome: cliente?.nome || '',
+    turma: cliente?.turma || '',
     telefone: cliente?.telefone || '',
     documento: cliente?.documento || ''
   });
@@ -174,6 +179,17 @@ function ClienteModal({ cliente, onClose, onSave }: {
             />
           </div>
           
+          <div>
+            <label className="block text-sm font-medium mb-1.5 text-slate-700">Turma</label>
+            <input
+              type="text"
+              placeholder="Ex: 5A"
+              value={formData.turma}
+              onChange={e => setFormData({...formData, turma: e.target.value})}
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors shadow-sm"
+            />
+          </div>
+
           <div>
             <label className="block text-sm font-medium mb-1.5 text-slate-700">Telefone / WhatsApp</label>
             <input 
