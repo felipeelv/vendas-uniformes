@@ -11,8 +11,8 @@ export default function Home() {
       <div className="absolute top-0 left-1/2 w-full -translate-x-1/2 h-[500px] bg-emerald-500/20 rounded-[100%] blur-[120px] pointer-events-none" />
       
       <div className="z-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
-        <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-[2rem] bg-white shadow-2xl flex items-center justify-center mx-auto mb-8 relative after:absolute after:inset-0 after:rounded-[2rem] after:ring-1 after:ring-slate-900/5">
-          <span className="text-slate-900 font-extrabold text-5xl sm:text-7xl leading-none -mt-2">e</span>
+        <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-[2rem] bg-white shadow-2xl flex items-center justify-center mx-auto mb-8 relative after:absolute after:inset-0 after:rounded-[2rem] after:ring-1 after:ring-slate-900/5 overflow-hidden p-4">
+          <img src="/logo.png" alt="Colégio Eleve" className="w-full h-full object-contain" />
         </div>
         
         <h1 className="text-4xl sm:text-6xl font-black text-white mb-4">Colégio Eleve</h1>
