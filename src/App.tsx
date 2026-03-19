@@ -13,9 +13,17 @@ import LojaVirtual from './pages/LojaVirtual';
 import FechamentoCaixa from './pages/FechamentoCaixa';
 import { useStore } from './store/useStore';
 
+type UserRole = 'Admin' | 'Gerente' | 'Vendedor';
+
 function RotaProtegida() {
   const isAutenticado = useStore((s) => s.isAutenticado);
   if (!isAutenticado) return <Navigate to="/login" replace />;
+  return <Outlet />;
+}
+
+function RotaPorRole({ roles }: { roles: UserRole[] }) {
+  const role = useStore((s) => s.usuarioAtivo?.role);
+  if (!role || !roles.includes(role)) return <Navigate to="/vendas" replace />;
   return <Outlet />;
 }
 
@@ -29,14 +37,23 @@ function App() {
 
         <Route element={<RotaProtegida />}>
           <Route element={<Layout />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/estoque" element={<Estoque />} />
-            <Route path="/clientes" element={<Clientes />} />
-            <Route path="/vendedores" element={<Vendedores />} />
+            {/* Acessível a todos */}
             <Route path="/vendas" element={<Vendas />} />
-            <Route path="/financeiro" element={<Financeiro />} />
-            <Route path="/relatorios" element={<Relatorios />} />
             <Route path="/fechamento" element={<FechamentoCaixa />} />
+
+            {/* Gerente + Admin */}
+            <Route element={<RotaPorRole roles={['Admin', 'Gerente']} />}>
+              <Route path="/estoque" element={<Estoque />} />
+              <Route path="/clientes" element={<Clientes />} />
+            </Route>
+
+            {/* Somente Admin */}
+            <Route element={<RotaPorRole roles={['Admin']} />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/vendedores" element={<Vendedores />} />
+              <Route path="/financeiro" element={<Financeiro />} />
+              <Route path="/relatorios" element={<Relatorios />} />
+            </Route>
           </Route>
         </Route>
 

@@ -3,15 +3,17 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { TrendingUp, LayoutDashboard, ShoppingCart, LogOut, PackageSearch, PieChart, Menu, X, Users, LineChart, UsersRound, Lock } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
+type UserRole = 'Admin' | 'Gerente' | 'Vendedor';
+
 const sidebarLinks = [
-  { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { path: '/vendas', icon: TrendingUp, label: 'Caixa / PDV' },
-  { path: '/clientes', icon: UsersRound, label: 'CRM / Clientes' },
-  { path: '/vendedores', icon: Users, label: 'Usuários' },
-  { path: '/estoque', icon: PackageSearch, label: 'Estoque de Loja' },
-  { path: '/financeiro', icon: PieChart, label: 'Financeiro' },
-  { path: '/relatorios', icon: LineChart, label: 'Desempenho & Relatórios' },
-  { path: '/fechamento', icon: Lock, label: 'Fechamento de Caixa' },
+  { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['Admin'] as UserRole[] },
+  { path: '/vendas', icon: TrendingUp, label: 'Caixa / PDV', roles: ['Admin', 'Gerente', 'Vendedor'] as UserRole[] },
+  { path: '/clientes', icon: UsersRound, label: 'CRM / Clientes', roles: ['Admin', 'Gerente'] as UserRole[] },
+  { path: '/vendedores', icon: Users, label: 'Usuários', roles: ['Admin'] as UserRole[] },
+  { path: '/estoque', icon: PackageSearch, label: 'Estoque de Loja', roles: ['Admin', 'Gerente'] as UserRole[] },
+  { path: '/financeiro', icon: PieChart, label: 'Financeiro', roles: ['Admin'] as UserRole[] },
+  { path: '/relatorios', icon: LineChart, label: 'Desempenho & Relatórios', roles: ['Admin'] as UserRole[] },
+  { path: '/fechamento', icon: Lock, label: 'Fechamento de Caixa', roles: ['Admin', 'Gerente', 'Vendedor'] as UserRole[] },
 ];
 
 export default function Layout() {
@@ -55,7 +57,7 @@ export default function Layout() {
 
       <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto">
         <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-3 mt-2">Navegação Principal</div>
-        {sidebarLinks.map((link) => {
+        {sidebarLinks.filter(link => !usuarioAtivo || link.roles.includes(usuarioAtivo.role)).map((link) => {
           const Icon = link.icon;
           return (
             <NavLink
@@ -121,22 +123,18 @@ export default function Layout() {
             <h2 className="text-lg font-semibold text-slate-800 tracking-tight sm:hidden">Colégio Eleve</h2>
           </div>
           
-          {/* User Profile Switcher */}
+          {/* User Info */}
           <div className="flex items-center gap-3 sm:gap-4 bg-slate-100/70 p-1.5 pr-4 rounded-full border border-slate-200/60">
-            <div className="w-8 h-8 rounded-full bg-violet-600 text-white flex items-center justify-center shadow-sm shrink-0">
+            <div className={`w-8 h-8 rounded-full text-white flex items-center justify-center shadow-sm shrink-0 ${
+              usuarioAtivo?.role === 'Admin' ? 'bg-indigo-600' :
+              usuarioAtivo?.role === 'Gerente' ? 'bg-amber-500' :
+              'bg-violet-600'
+            }`}>
               <Users className="w-4 h-4" />
             </div>
             <div className="flex flex-col justify-center">
-              <span className="text-[10px] uppercase font-bold text-slate-400 leading-none mb-0.5">Operador Atual</span>
-              <select 
-                value={usuarioAtivo?.id || ''}
-                onChange={(e) => setUsuarioAtivo(e.target.value)}
-                className="bg-transparent text-sm font-semibold text-slate-800 focus:outline-none cursor-pointer appearance-none leading-none"
-              >
-                {usuarios.map(u => (
-                  <option key={u.id} value={u.id}>{u.nome}</option>
-                ))}
-              </select>
+              <span className="text-[10px] uppercase font-bold text-slate-400 leading-none mb-0.5">{usuarioAtivo?.role}</span>
+              <span className="text-sm font-semibold text-slate-800 leading-none">{usuarioAtivo?.nome}</span>
             </div>
           </div>
         </header>

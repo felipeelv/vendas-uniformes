@@ -80,7 +80,7 @@ export interface Despesa {
 export interface Usuario {
   id: string;
   nome: string;
-  role: 'Admin' | 'Vendedor';
+  role: 'Admin' | 'Gerente' | 'Vendedor';
   senha: string;
 }
 
@@ -147,9 +147,9 @@ const genId = () => Math.random().toString(36).substr(2, 9);
 const getDateStr = (date: Date) => date.toISOString().split('T')[0];
 
 const mockUsuarios: Usuario[] = [
-  { id: 'u1', nome: 'Felipe (Gerente)', role: 'Admin', senha: '1234' },
-  { id: 'u2', nome: 'Carlos (Vendedor)', role: 'Vendedor', senha: '1234' },
-  { id: 'u3', nome: 'Ana (Vendedora)', role: 'Vendedor', senha: '1234' },
+  { id: 'u1', nome: 'Felipe', role: 'Admin', senha: '1234' },
+  { id: 'u2', nome: 'Carlos', role: 'Gerente', senha: '1234' },
+  { id: 'u3', nome: 'Ana', role: 'Vendedor', senha: '1234' },
 ];
 
 const mockClientes: Cliente[] = [

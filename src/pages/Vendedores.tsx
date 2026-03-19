@@ -57,7 +57,11 @@ export default function Vendedores() {
                     <p className="font-semibold text-slate-900">{usuario.nome}</p>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`inline-flex px-2 py-1 rounded-md text-xs font-bold ${usuario.role === 'Admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
+                    <span className={`inline-flex px-2 py-1 rounded-md text-xs font-bold ${
+                      usuario.role === 'Admin' ? 'bg-indigo-100 text-indigo-700' :
+                      usuario.role === 'Gerente' ? 'bg-amber-100 text-amber-700' :
+                      'bg-slate-100 text-slate-600'
+                    }`}>
                       {usuario.role}
                     </span>
                   </td>
@@ -110,7 +114,7 @@ function UsuarioModal({ usuario, onClose }: {
   const { addUsuario, updateUsuario } = useStore();
   const [formData, setFormData] = useState({
     nome: usuario?.nome || '',
-    role: usuario?.role || 'Vendedor' as 'Admin' | 'Vendedor',
+    role: usuario?.role || 'Vendedor' as 'Admin' | 'Gerente' | 'Vendedor',
     senha: usuario?.senha || ''
   });
 
@@ -138,11 +142,11 @@ function UsuarioModal({ usuario, onClose }: {
         
         <form onSubmit={handleSubmit} className="p-6 space-y-4 text-slate-700">
           <div>
-            <label className="block text-sm font-medium mb-1.5 text-slate-700">Nome do Vendedor / Administrador</label>
-            <input 
+            <label className="block text-sm font-medium mb-1.5 text-slate-700">Nome do Usuário</label>
+            <input
               required
-              type="text" 
-              placeholder="Ex: Carlos (Vendedor)"
+              type="text"
+              placeholder="Ex: Carlos"
               value={formData.nome}
               onChange={e => setFormData({...formData, nome: e.target.value})}
               className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors shadow-sm"
@@ -151,13 +155,14 @@ function UsuarioModal({ usuario, onClose }: {
           
           <div>
             <label className="block text-sm font-medium mb-1.5 text-slate-700">Nível de Acesso no Sistema</label>
-            <select 
+            <select
               value={formData.role}
-              onChange={e => setFormData({...formData, role: e.target.value as 'Admin' | 'Vendedor'})}
+              onChange={e => setFormData({...formData, role: e.target.value as 'Admin' | 'Gerente' | 'Vendedor'})}
               className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors shadow-sm"
             >
-              <option value="Vendedor">Vendedor (Sessão Regular)</option>
-              <option value="Admin">Administrador (Pode ver Finanças/Relatório)</option>
+              <option value="Vendedor">Vendedor (Caixa e Fechamento)</option>
+              <option value="Gerente">Gerente (+ Estoque e Clientes)</option>
+              <option value="Admin">Administrador (Acesso Total)</option>
             </select>
           </div>
 

@@ -16,7 +16,9 @@ export default function Login() {
     setErro('');
     const sucesso = login(selectedUserId, senha);
     if (sucesso) {
-      navigate('/dashboard');
+      const usuario = usuarios.find(u => u.id === selectedUserId);
+      const destino = usuario?.role === 'Admin' ? '/dashboard' : '/vendas';
+      navigate(destino);
     } else {
       setErro('Senha incorreta. Tente novamente.');
     }
