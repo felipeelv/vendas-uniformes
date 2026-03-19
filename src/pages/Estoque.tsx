@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useStore } from '../store/useStore';
 import type { Produto, Categoria } from '../store/useStore';
 import { TAMANHOS_PADRAO } from '../store/useStore';
-import { Plus, Search, Edit2, Trash2, AlertCircle, X } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, AlertCircle, X, Upload, ImageOff } from 'lucide-react';
 
 export default function Estoque() {
   const { produtos, deleteProduto } = useStore();
@@ -163,6 +163,25 @@ function ProdutoModal({ produto, onClose }: { produto: Produto | null, onClose: 
     precoVenda: produto?.precoVenda || 0,
     imagem: produto?.imagem || '',
   });
+
+  const [imagemPreview, setImagemPreview] = useState<string>(produto?.imagem || '');
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result as string;
+      setFormData(prev => ({ ...prev, imagem: base64 }));
+      setImagemPreview(base64);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setFormData(prev => ({ ...prev, imagem: '' }));
+    setImagemPreview('');
+  };
 
   const toggleTamanho = (t: string) => {
     setTamanhosSelecionados(prev => {
@@ -356,15 +375,31 @@ function ProdutoModal({ produto, onClose }: { produto: Produto | null, onClose: 
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1.5">URL da Imagem (Opcional)</label>
-            <input
-              type="url"
-              placeholder="https://exemplo.com/foto.jpg"
-              value={formData.imagem}
-              onChange={e => setFormData({...formData, imagem: e.target.value})}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
-            />
-            <p className="text-xs text-slate-400 mt-1">Insira um link direto para a foto da peca. Ela sera exibida no Catalogo de Vendas.</p>
+            <label className="block text-sm font-medium mb-1.5">Imagem do Produto (Opcional)</label>
+            {imagemPreview ? (
+              <div className="relative w-full h-48 rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
+                <img src={imagemPreview} alt="Preview" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={handleRemoveImage}
+                  className="absolute top-2 right-2 bg-white/90 hover:bg-white text-slate-600 hover:text-red-500 p-1.5 rounded-full shadow transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center w-full h-40 bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-violet-400 hover:bg-violet-50/50 transition-colors">
+                <Upload className="w-8 h-8 text-slate-400 mb-2" />
+                <span className="text-sm text-slate-500 font-medium">Clique para enviar uma foto</span>
+                <span className="text-xs text-slate-400 mt-1">JPG, PNG ou WebP</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+              </label>
+            )}
           </div>
 
           <div className="pt-6 flex justify-end gap-3">

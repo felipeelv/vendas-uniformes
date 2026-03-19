@@ -240,41 +240,56 @@ export default function Vendas() {
 
             <div className="p-5">
               <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Escolha o Tamanho</p>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {activeGroup.variantes.map(variante => {
-                  const esgotado = variante.quantidade === 0;
                   const noCarrinho = carrinho[variante.id] || 0;
                   return (
-                    <button
+                    <div
                       key={variante.id}
-                      disabled={esgotado}
-                      onClick={() => {
-                        handleAddToCart(variante);
-                      }}
-                      className={`relative p-3 rounded-xl border-2 text-center transition-all ${
-                        esgotado
-                          ? 'border-slate-100 bg-slate-50 cursor-not-allowed'
-                          : noCarrinho > 0
-                            ? 'border-emerald-500 bg-emerald-50'
-                            : 'border-slate-200 bg-white hover:border-emerald-400 hover:bg-emerald-50'
+                      className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center justify-between gap-2 ${
+                        noCarrinho > 0
+                          ? 'border-emerald-500 bg-emerald-50'
+                          : 'border-slate-200 bg-white hover:border-emerald-400'
                       }`}
                     >
-                      <span className={`block text-sm font-bold ${esgotado ? 'text-slate-300' : 'text-slate-800'}`}>
-                        {variante.tamanho}
-                      </span>
-                      {esgotado ? (
-                        <span className="block text-[9px] font-bold text-red-400 uppercase mt-0.5">Esgotado</span>
-                      ) : (
-                        <span className="block text-[10px] font-medium text-slate-400 mt-0.5">
+                      <div className="text-center w-full">
+                        <span className="block text-sm font-bold text-slate-800">
+                          {variante.tamanho}
+                        </span>
+                        <span className="block text-[10px] font-medium text-slate-500 mt-0.5">
                           {formatBRL(variante.precoVenda)}
                         </span>
-                      )}
-                      {noCarrinho > 0 && (
-                        <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-emerald-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center">
-                          {noCarrinho}
+                        <span className="block text-[9px] text-slate-400 mt-0.5 font-medium">
+                          Estoque: {variante.quantidade}
+                        </span>
+                      </div>
+                      
+                      {noCarrinho === 0 ? (
+                        <button
+                          onClick={() => handleAddToCart(variante)}
+                          className="w-full py-1.5 mt-1 rounded-lg text-xs font-bold bg-slate-100 hover:bg-emerald-500 hover:text-white text-slate-600 transition-colors"
+                        >
+                          Adicionar
+                        </button>
+                      ) : (
+                        <div className="flex items-center justify-between w-full bg-white rounded-lg p-1 border border-emerald-200 mt-1">
+                          <button 
+                            onClick={() => handleRemoveFromCart(variante.id)} 
+                            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-red-50 text-red-500 transition-colors"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </button>
+                          <span className="font-bold text-sm text-slate-800">{noCarrinho}</span>
+                          <button 
+                            onClick={() => handleAddToCart(variante)} 
+                            disabled={noCarrinho >= variante.quantidade}
+                            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-emerald-50 text-emerald-600 transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
                         </div>
                       )}
-                    </button>
+                    </div>
                   );
                 })}
               </div>
