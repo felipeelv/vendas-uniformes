@@ -81,6 +81,7 @@ export interface Usuario {
   id: string;
   nome: string;
   role: 'Admin' | 'Vendedor';
+  senha: string;
 }
 
 interface ItemSaida {
@@ -98,6 +99,9 @@ interface ItemEntrada {
 }
 
 interface StoreState {
+  isAutenticado: boolean;
+  login: (id: string, senha: string) => boolean;
+  logout: () => void;
   usuarios: Usuario[];
   usuarioAtivo: Usuario | null;
   setUsuarioAtivo: (id: string) => void;
@@ -143,9 +147,9 @@ const genId = () => Math.random().toString(36).substr(2, 9);
 const getDateStr = (date: Date) => date.toISOString().split('T')[0];
 
 const mockUsuarios: Usuario[] = [
-  { id: 'u1', nome: 'Felipe (Gerente)', role: 'Admin' },
-  { id: 'u2', nome: 'Carlos (Vendedor)', role: 'Vendedor' },
-  { id: 'u3', nome: 'Ana (Vendedora)', role: 'Vendedor' },
+  { id: 'u1', nome: 'Felipe (Gerente)', role: 'Admin', senha: '1234' },
+  { id: 'u2', nome: 'Carlos (Vendedor)', role: 'Vendedor', senha: '1234' },
+  { id: 'u3', nome: 'Ana (Vendedora)', role: 'Vendedor', senha: '1234' },
 ];
 
 const mockClientes: Cliente[] = [
@@ -170,8 +174,18 @@ const mockDespesas: Despesa[] = [
 ];
 
 export const useStore = create<StoreState>((set, get) => ({
+  isAutenticado: false,
+  login: (id, senha) => {
+    const usuario = get().usuarios.find(u => u.id === id);
+    if (usuario && usuario.senha === senha) {
+      set({ isAutenticado: true, usuarioAtivo: usuario });
+      return true;
+    }
+    return false;
+  },
+  logout: () => set({ isAutenticado: false, usuarioAtivo: null }),
   usuarios: mockUsuarios,
-  usuarioAtivo: mockUsuarios[0],
+  usuarioAtivo: null,
   setUsuarioAtivo: (id) => set((state) => ({ usuarioAtivo: state.usuarios.find(u => u.id === id) || state.usuarioAtivo })),
   addUsuario: (usuario) => set(state => ({ usuarios: [...state.usuarios, { ...usuario, id: genId() }] })),
   updateUsuario: (id, data) => set(state => {

@@ -22,7 +22,7 @@ export default function Home() {
 
         <div className="flex flex-col items-center justify-center gap-4 w-full max-w-md mx-auto">
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/login')}
             className="group w-full flex items-center justify-center gap-3 bg-white text-slate-900 px-6 py-5 rounded-2xl font-black text-lg shadow-xl shadow-white/5 hover:scale-[1.02] active:scale-[0.98] transition-all"
           >
             <Lock className="w-5 h-5 text-emerald-500 group-hover:scale-110 transition-transform" />

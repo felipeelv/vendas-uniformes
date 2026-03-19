@@ -27,9 +27,9 @@ export default function Vendedores() {
             <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg shrink-0">
               <Users className="w-6 h-6" />
             </div>
-            <h1 className="text-2xl font-bold text-slate-900 truncate">Equipe de Vendas</h1>
+            <h1 className="text-2xl font-bold text-slate-900 truncate">Usuários</h1>
           </div>
-          <p className="text-slate-500 truncate">Gerencie os vendedores e administradores que operam o caixa.</p>
+          <p className="text-slate-500 truncate">Gerencie os usuários e administradores que operam o sistema.</p>
         </div>
         <button 
           onClick={() => { setEditingUsuario(null); setIsModalOpen(true); }}
@@ -110,7 +110,8 @@ function UsuarioModal({ usuario, onClose }: {
   const { addUsuario, updateUsuario } = useStore();
   const [formData, setFormData] = useState({
     nome: usuario?.nome || '',
-    role: usuario?.role || 'Vendedor' as 'Admin' | 'Vendedor'
+    role: usuario?.role || 'Vendedor' as 'Admin' | 'Vendedor',
+    senha: usuario?.senha || ''
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -158,6 +159,18 @@ function UsuarioModal({ usuario, onClose }: {
               <option value="Vendedor">Vendedor (Sessão Regular)</option>
               <option value="Admin">Administrador (Pode ver Finanças/Relatório)</option>
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1.5 text-slate-700">Senha de Acesso</label>
+            <input
+              required
+              type="password"
+              placeholder="Digite a senha"
+              value={formData.senha}
+              onChange={e => setFormData({...formData, senha: e.target.value})}
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors shadow-sm"
+            />
           </div>
 
           <div className="pt-4 flex justify-end gap-3">

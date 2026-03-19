@@ -7,7 +7,7 @@ const sidebarLinks = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/vendas', icon: TrendingUp, label: 'Caixa / PDV' },
   { path: '/clientes', icon: UsersRound, label: 'CRM / Clientes' },
-  { path: '/vendedores', icon: Users, label: 'Equipe de Vendas' },
+  { path: '/vendedores', icon: Users, label: 'Usuários' },
   { path: '/estoque', icon: PackageSearch, label: 'Estoque de Loja' },
   { path: '/financeiro', icon: PieChart, label: 'Financeiro' },
   { path: '/relatorios', icon: LineChart, label: 'Desempenho & Relatórios' },
@@ -16,7 +16,7 @@ const sidebarLinks = [
 
 export default function Layout() {
   const navigate = useNavigate();
-  const { usuarioAtivo, usuarios, setUsuarioAtivo } = useStore();
+  const { usuarioAtivo, usuarios, setUsuarioAtivo, logout } = useStore();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const handleNovaVenda = () => {
@@ -79,7 +79,7 @@ export default function Layout() {
       
       <div className="p-4 border-t border-slate-100 shrink-0">
         <button
-          onClick={() => navigate('/')}
+          onClick={() => { logout(); navigate('/'); }}
           className="flex items-center gap-3 px-3 py-2.5 w-full text-slate-500 hover:bg-rose-50 hover:text-rose-600 rounded-xl transition-colors font-medium"
         >
           <LogOut className="h-5 w-5 shrink-0" /> <span className="truncate">Sair do Sistema</span>
