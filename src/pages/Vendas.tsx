@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '../store/useStore';
 import type { Produto } from '../store/useStore';
-import { ShoppingCart, Plus, Minus, Search, CheckCircle2, ChevronRight, ImageOff, Trash2 } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Search, CheckCircle2, ChevronRight, ChevronLeft, ImageOff, Trash2 } from 'lucide-react';
 
 export default function Vendas() {
   const { produtos, clientes, registrarSaida, usuarioAtivo } = useStore();
@@ -11,6 +11,8 @@ export default function Vendas() {
   
   const [carrinho, setCarrinho] = useState<Record<string, number>>({});
   const [vendaSucesso, setVendaSucesso] = useState(false);
+  const [checkoutStep, setCheckoutStep] = useState<'cart' | 'payment'>('cart');
+  const [metodoPagamento, setMetodoPagamento] = useState('PIX');
 
   const categorias = ['Todas', ...Array.from(new Set(produtos.map(p => p.categoria)))];
 
@@ -52,7 +54,10 @@ export default function Vendas() {
 
   const handleFinalizar = () => {
     if (carrinhoItens.length === 0) return;
+    setCheckoutStep('payment');
+  };
 
+  const handleConfirmarPagamento = () => {
     let clienteNome = '';
     if (clienteSelecionado) {
       const cli = clientes.find(c => c.id === clienteSelecionado);
@@ -64,12 +69,12 @@ export default function Vendas() {
     });
 
     setVendaSucesso(true);
-    setCarrinho({});
-    setClienteSelecionado('');
-    
     setTimeout(() => {
       setVendaSucesso(false);
-    }, 4000);
+      setCarrinho({});
+      setClienteSelecionado('');
+      setCheckoutStep('cart');
+    }, 2000);
   };
 
   const formatBRL = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -170,107 +175,162 @@ export default function Vendas() {
       </div>
 
       {/* Direita: Carrinho / PDV Checkout */}
-      <div className="w-full lg:w-96 flex flex-col bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden shrink-0 z-10">
-        <div className="h-16 flex items-center justify-between px-6 bg-slate-900 text-white shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-emerald-500/20 rounded-lg">
-              <ShoppingCart className="w-5 h-5 text-emerald-400" />
-            </div>
-            <h2 className="font-bold text-lg tracking-tight">Caixa Virtual</h2>
-          </div>
-          {carrinhoItens.length > 0 && (
-            <button onClick={handleClearCart} className="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors flex items-center justify-center" title="Limpar Carrinho">
-              <Trash2 className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-
-        <div className="p-5 border-b border-slate-100 bg-slate-50/50 shrink-0">
-          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Cliente / Aluno (Opcional)</label>
-          <select 
-            value={clienteSelecionado}
-            onChange={e => setClienteSelecionado(e.target.value)}
-            className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm transition-colors"
-          >
-            <option value="">🛒 Venda Balcão (Sem Cadastro)</option>
-            {clientes.map(c => (
-              <option key={c.id} value={c.id}>{c.nome}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4 bg-slate-50/30">
-          {carrinhoItens.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center text-slate-400 space-y-4 py-12">
-              <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center">
-                <ShoppingCart className="w-8 h-8 text-slate-300" />
+      <div className="w-full lg:w-96 flex flex-col bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden shrink-0 z-10 relative">
+        
+        {checkoutStep === 'cart' ? (
+          <>
+            <div className="h-16 flex items-center justify-between px-6 bg-slate-900 text-white shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-500/20 rounded-lg">
+                  <ShoppingCart className="w-5 h-5 text-emerald-400" />
+                </div>
+                <h2 className="font-bold text-lg tracking-tight">Caixa Virtual</h2>
               </div>
-              <p className="text-sm px-8 font-medium">O carrinho está vazio.<br/>Selecione produtos na galeria ao lado para adicioná-los.</p>
+              {carrinhoItens.length > 0 && (
+                <button onClick={handleClearCart} className="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors flex items-center justify-center" title="Limpar Carrinho">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
-          ) : (
-            <div className="space-y-3">
-              {carrinhoItens.map(({ produto, qtd }) => (
-                <div key={produto.id} className="flex gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] animate-in fade-in slide-in-from-right-4">
-                  {produto.imagem ? (
-                    <img src={produto.imagem} className="w-16 h-16 rounded-lg object-cover bg-slate-100 border border-slate-100 shrink-0" />
-                  ) : (
-                    <div className="w-16 h-16 rounded-lg bg-slate-100 border border-slate-100 flex items-center justify-center shrink-0">
-                      <ImageOff className="w-5 h-5 text-slate-300" />
-                    </div>
-                  )}
-                  
-                  <div className="flex-1 min-w-0 flex flex-col justify-between">
-                    <div>
-                      <p className="text-sm font-bold text-slate-800 leading-tight truncate">{produto.nome}</p>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Tam: {produto.tamanho}</p>
-                    </div>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="font-bold text-emerald-600 text-sm tracking-tight">{formatBRL(produto.precoVenda * qtd)}</span>
-                      <div className="flex items-center bg-slate-100/80 rounded-lg p-0.5 border border-slate-200">
-                        <button onClick={() => handleRemoveFromCart(produto.id)} className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-white hover:shadow-sm rounded-md transition-all">
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="w-7 text-center text-xs font-bold text-slate-800 select-none">{qtd}</span>
-                        <button onClick={() => handleAddToCart(produto)} className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-white hover:shadow-sm rounded-md transition-all">
-                          <Plus className="w-3 h-3" />
-                        </button>
+
+            <div className="p-5 border-b border-slate-100 bg-slate-50/50 shrink-0">
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Cliente / Aluno (Opcional)</label>
+              <select 
+                value={clienteSelecionado}
+                onChange={e => setClienteSelecionado(e.target.value)}
+                className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm transition-colors"
+              >
+                <option value="">🛒 Venda Balcão (Sem Cadastro)</option>
+                {clientes.map(c => (
+                  <option key={c.id} value={c.id}>{c.nome}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 bg-slate-50/30">
+              {carrinhoItens.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center text-slate-400 space-y-4 py-12">
+                  <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center">
+                    <ShoppingCart className="w-8 h-8 text-slate-300" />
+                  </div>
+                  <p className="text-sm px-8 font-medium">O carrinho está vazio.<br/>Selecione produtos na galeria ao lado para adicioná-los.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {carrinhoItens.map(({ produto, qtd }) => (
+                    <div key={produto.id} className="flex gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] animate-in fade-in slide-in-from-right-4">
+                      {produto.imagem ? (
+                        <img src={produto.imagem} className="w-16 h-16 rounded-lg object-cover bg-slate-100 border border-slate-100 shrink-0" />
+                      ) : (
+                        <div className="w-16 h-16 rounded-lg bg-slate-100 border border-slate-100 flex items-center justify-center shrink-0">
+                          <ImageOff className="w-5 h-5 text-slate-300" />
+                        </div>
+                      )}
+                      
+                      <div className="flex-1 min-w-0 flex flex-col justify-between">
+                        <div>
+                          <p className="text-sm font-bold text-slate-800 leading-tight truncate">{produto.nome}</p>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Tam: {produto.tamanho}</p>
+                        </div>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="font-bold text-emerald-600 text-sm tracking-tight">{formatBRL(produto.precoVenda * qtd)}</span>
+                          <div className="flex items-center bg-slate-100/80 rounded-lg p-0.5 border border-slate-200">
+                            <button onClick={() => handleRemoveFromCart(produto.id)} className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-white hover:shadow-sm rounded-md transition-all">
+                              <Minus className="w-3 h-3" />
+                            </button>
+                            <span className="w-7 text-center text-xs font-bold text-slate-800 select-none">{qtd}</span>
+                            <button onClick={() => handleAddToCart(produto)} className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-white hover:shadow-sm rounded-md transition-all">
+                              <Plus className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
-        </div>
 
-        <div className="p-6 bg-white border-t border-slate-100 shrink-0 shadow-[0_-10px_40px_rgba(0,0,0,0.03)] z-10 relative">
-          <div className="flex justify-between items-end mb-5">
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total a Pagar</p>
-              <p className="text-sm font-bold text-slate-600">{totalPecas} {totalPecas === 1 ? 'item' : 'itens'}</p>
-            </div>
-            <h2 className="text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">{formatBRL(totalVenda)}</h2>
-          </div>
-          
-          <button 
-            disabled={carrinhoItens.length === 0}
-            onClick={handleFinalizar}
-            className="relative w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white px-4 py-4 rounded-xl font-bold text-lg transition-all active:scale-[0.98] shadow-xl shadow-emerald-200 disabled:shadow-none overflow-hidden"
-          >
-            {vendaSucesso && (
-              <div className="absolute inset-0 bg-emerald-600 flex items-center justify-center gap-2 animate-in fade-in z-20">
-                <CheckCircle2 className="w-6 h-6" /> Concluído!
+            <div className="p-6 bg-white border-t border-slate-100 shrink-0 shadow-[0_-10px_40px_rgba(0,0,0,0.03)] z-10 relative">
+              <div className="flex justify-between items-end mb-5">
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total a Pagar</p>
+                  <p className="text-sm font-bold text-slate-600">{totalPecas} {totalPecas === 1 ? 'item' : 'itens'}</p>
+                </div>
+                <h2 className="text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">{formatBRL(totalVenda)}</h2>
               </div>
-            )}
-            Pagar e Finalizar <ChevronRight className="w-6 h-6" />
-          </button>
+              
+              <button 
+                disabled={carrinhoItens.length === 0}
+                onClick={handleFinalizar}
+                className="relative w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white px-4 py-4 rounded-xl font-bold text-lg transition-all active:scale-[0.98] shadow-xl shadow-emerald-200 disabled:shadow-none overflow-hidden"
+              >
+                Avançar para Pagamento <ChevronRight className="w-6 h-6" />
+              </button>
 
-          <div className="text-center mt-5">
-            <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">
-              Operador de Venda: <span className="text-slate-700">{usuarioAtivo?.nome || 'Não logado'}</span>
-            </p>
+              <div className="text-center mt-5">
+                <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">
+                  Operador de Venda: <span className="text-slate-700">{usuarioAtivo?.nome || 'Não logado'}</span>
+                </p>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="absolute inset-0 bg-white z-20 flex flex-col animate-in slide-in-from-right duration-300">
+            <div className="h-16 flex items-center gap-3 px-6 bg-slate-900 text-white shrink-0">
+              <button onClick={() => setCheckoutStep('cart')} className="p-2 hover:bg-slate-700 rounded-full transition-colors -ml-2">
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <h2 className="font-bold text-lg tracking-tight">Página de Finalização</h2>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 bg-slate-50 flex flex-col relative">
+              {vendaSucesso && (
+                <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-30 flex flex-col items-center justify-center p-6 text-center animate-in zoom-in fade-in">
+                  <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mb-6 shadow-xl shadow-emerald-200">
+                    <CheckCircle2 className="w-12 h-12 text-emerald-600" />
+                  </div>
+                  <h2 className="text-3xl font-black text-slate-900 mb-2">Pagamento Aprovado</h2>
+                  <p className="text-slate-500 font-medium">A venda foi registrada com sucesso no sistema.</p>
+                </div>
+              )}
+
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Escolher a Forma de Pagamento</h3>
+              
+              <div className="grid grid-cols-2 gap-3 mb-8">
+                <button onClick={() => setMetodoPagamento('PIX')} className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-colors ${metodoPagamento === 'PIX' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-100'}`}>
+                  <span className="font-bold">PIX</span>
+                </button>
+                <button onClick={() => setMetodoPagamento('CARTAO')} className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-colors ${metodoPagamento === 'CARTAO' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-100'}`}>
+                  <span className="font-bold">Cartão</span>
+                </button>
+                <button onClick={() => setMetodoPagamento('DINHEIRO')} className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-colors col-span-2 ${metodoPagamento === 'DINHEIRO' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-100'}`}>
+                  <span className="font-bold">Dinheiro em Espécie</span>
+                </button>
+              </div>
+
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-slate-500 font-medium">Resumo do Pedido</span>
+                  <span className="text-slate-900 font-bold">{totalPecas} {totalPecas === 1 ? 'peça' : 'peças'}</span>
+                </div>
+                <div className="flex justify-between items-center pt-3 mt-3 border-t border-slate-100">
+                  <span className="text-lg font-bold text-slate-900">Total a Pagar</span>
+                  <span className="text-2xl font-black text-emerald-600">{formatBRL(totalVenda)}</span>
+                </div>
+              </div>
+
+              <div className="mt-auto pt-6">
+                <button 
+                  onClick={handleConfirmarPagamento}
+                  className="w-full py-4 rounded-xl font-black text-xl bg-slate-900 hover:bg-slate-800 text-white shadow-xl transition-all flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 className="w-5 h-5"/> Confirmar Recebimento
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
