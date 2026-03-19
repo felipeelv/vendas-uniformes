@@ -143,13 +143,18 @@ export default function Estoque() {
 function ProdutoModal({ produto, onClose }: { produto: Produto | null, onClose: () => void }) {
   const { addProduto, updateProduto, tamanhosCustom, addTamanhoCustom } = useStore();
   const [novoTamanho, setNovoTamanho] = useState('');
+  const isEditing = !!produto;
 
-  const todosOsTamanhos = [...TAMANHOS_PADRAO, ...tamanhosCustom];
+  const todosOsTamanhos: string[] = [...TAMANHOS_PADRAO, ...tamanhosCustom];
+
+  // No modo criação: múltiplos tamanhos. No modo edição: tamanho único.
+  const [tamanhosSelecionados, setTamanhosSelecionados] = useState<string[]>(
+    produto ? [produto.tamanho] : []
+  );
 
   const [formData, setFormData] = useState({
     nome: produto?.nome || '',
     categoria: produto?.categoria || 'Camiseta',
-    tamanho: produto?.tamanho || 'M',
     cor: produto?.cor || '',
     quantidade: produto?.quantidade || 0,
     precoCusto: produto?.precoCusto || 0,
@@ -157,38 +162,55 @@ function ProdutoModal({ produto, onClose }: { produto: Produto | null, onClose: 
     imagem: produto?.imagem || '',
   });
 
+  const toggleTamanho = (t: string) => {
+    if (isEditing) {
+      setTamanhosSelecionados([t]);
+      return;
+    }
+    setTamanhosSelecionados(prev =>
+      prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]
+    );
+  };
+
   const handleAddTamanho = () => {
     const t = novoTamanho.trim().toUpperCase();
-    if (t && !todosOsTamanhos.includes(t)) {
+    if (!t) return;
+    if (!todosOsTamanhos.includes(t)) {
       addTamanhoCustom(t);
-      setFormData({ ...formData, tamanho: t });
+    }
+    if (!tamanhosSelecionados.includes(t)) {
+      setTamanhosSelecionados(prev => [...prev, t]);
     }
     setNovoTamanho('');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (produto) {
-      updateProduto(produto.id, formData as any);
+    if (tamanhosSelecionados.length === 0) return;
+
+    if (isEditing) {
+      updateProduto(produto!.id, { ...formData, tamanho: tamanhosSelecionados[0] } as any);
     } else {
-      addProduto(formData as any);
+      tamanhosSelecionados.forEach(tam => {
+        addProduto({ ...formData, tamanho: tam } as any);
+      });
     }
     onClose();
   };
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center shrink-0">
           <h2 className="text-xl font-bold text-slate-800">
-            {produto ? 'Editar Produto' : 'Novo Produto'}
+            {isEditing ? 'Editar Produto' : 'Novo Produto'}
           </h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-slate-700">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-slate-700 overflow-y-auto flex-1">
           <div>
             <label className="block text-sm font-medium mb-1.5">Nome do Produto</label>
             <input
@@ -200,68 +222,85 @@ function ProdutoModal({ produto, onClose }: { produto: Produto | null, onClose: 
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Categoria</label>
-              <select
-                value={formData.categoria}
-                onChange={e => setFormData({...formData, categoria: e.target.value as Categoria})}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
-              >
-                <option value="Camiseta">Camiseta</option>
-                <option value="Calça">Calça</option>
-                <option value="Bermuda">Bermuda</option>
-                <option value="Moletom">Moletom</option>
-                <option value="Casaco">Casaco</option>
-              </select>
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Categoria</label>
+            <select
+              value={formData.categoria}
+              onChange={e => setFormData({...formData, categoria: e.target.value as Categoria})}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
+            >
+              <option value="Camiseta">Camiseta</option>
+              <option value="Calça">Calça</option>
+              <option value="Bermuda">Bermuda</option>
+              <option value="Moletom">Moletom</option>
+              <option value="Casaco">Casaco</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1.5">
+              {isEditing ? 'Tamanho' : 'Tamanhos'}{' '}
+              {!isEditing && tamanhosSelecionados.length > 0 && (
+                <span className="text-violet-600">({tamanhosSelecionados.length} selecionado{tamanhosSelecionados.length > 1 ? 's' : ''})</span>
+              )}
+            </label>
+            {!isEditing && (
+              <p className="text-xs text-slate-400 mb-2">Selecione os tamanhos que deseja cadastrar. Sera criada uma entrada para cada tamanho.</p>
+            )}
+            <div className="flex flex-wrap gap-1.5">
+              {todosOsTamanhos.map(t => {
+                const selected = tamanhosSelecionados.includes(t);
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => toggleTamanho(t)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition-all ${
+                      selected
+                        ? 'border-violet-500 bg-violet-50 text-violet-700'
+                        : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                );
+              })}
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Tamanho</label>
-              <select
-                value={formData.tamanho}
-                onChange={e => setFormData({...formData, tamanho: e.target.value})}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
+            <div className="flex gap-2 mt-2">
+              <input
+                type="text"
+                placeholder="Criar tamanho personalizado..."
+                value={novoTamanho}
+                onChange={e => setNovoTamanho(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddTamanho(); } }}
+                className="flex-1 px-2 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
+              />
+              <button
+                type="button"
+                onClick={handleAddTamanho}
+                className="px-3 py-1.5 text-xs font-medium bg-violet-100 text-violet-700 rounded-lg hover:bg-violet-200 transition-colors"
               >
-                {todosOsTamanhos.map(t => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
-              <div className="flex gap-2 mt-2">
-                <input
-                  type="text"
-                  placeholder="Novo tamanho..."
-                  value={novoTamanho}
-                  onChange={e => setNovoTamanho(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddTamanho(); } }}
-                  className="flex-1 px-2 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddTamanho}
-                  className="px-3 py-1.5 text-xs font-medium bg-violet-100 text-violet-700 rounded-lg hover:bg-violet-200 transition-colors"
-                >
-                  + Criar
-                </button>
-              </div>
+                + Criar
+              </button>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1.5">Cor Predominante</label>
-              <input 
+              <input
                 required
-                type="text" 
+                type="text"
                 value={formData.cor}
                 onChange={e => setFormData({...formData, cor: e.target.value})}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1.5">Quantidade Inicial</label>
-              <input 
+              <label className="block text-sm font-medium mb-1.5">Quantidade {!isEditing && 'por Tamanho'}</label>
+              <input
                 required
-                type="number" 
+                type="number"
                 min="0"
                 value={formData.quantidade}
                 onChange={e => setFormData({...formData, quantidade: Number(e.target.value)})}
@@ -272,10 +311,10 @@ function ProdutoModal({ produto, onClose }: { produto: Produto | null, onClose: 
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1.5">Preço de Custo (R$)</label>
-              <input 
+              <label className="block text-sm font-medium mb-1.5">Preco de Custo (R$)</label>
+              <input
                 required
-                type="number" 
+                type="number"
                 step="0.01"
                 min="0"
                 value={formData.precoCusto}
@@ -284,10 +323,10 @@ function ProdutoModal({ produto, onClose }: { produto: Produto | null, onClose: 
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1.5">Preço de Venda (R$)</label>
-              <input 
+              <label className="block text-sm font-medium mb-1.5">Preco de Venda (R$)</label>
+              <input
                 required
-                type="number" 
+                type="number"
                 step="0.01"
                 min="0"
                 value={formData.precoVenda}
@@ -299,29 +338,30 @@ function ProdutoModal({ produto, onClose }: { produto: Produto | null, onClose: 
 
           <div>
             <label className="block text-sm font-medium mb-1.5">URL da Imagem (Opcional)</label>
-            <input 
-              type="url" 
+            <input
+              type="url"
               placeholder="https://exemplo.com/foto.jpg"
               value={formData.imagem}
               onChange={e => setFormData({...formData, imagem: e.target.value})}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
             />
-            <p className="text-xs text-slate-400 mt-1">Insira um link direto para a foto da peça. Ela será exibida no Catálogo de Vendas.</p>
+            <p className="text-xs text-slate-400 mt-1">Insira um link direto para a foto da peca. Ela sera exibida no Catalogo de Vendas.</p>
           </div>
 
           <div className="pt-6 flex justify-end gap-3">
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={onClose}
               className="px-4 py-2 hover:bg-slate-100 text-slate-600 rounded-xl font-medium transition-colors"
             >
               Cancelar
             </button>
-            <button 
+            <button
               type="submit"
-              className="px-6 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-medium transition-colors shadow-sm shadow-violet-200"
+              disabled={tamanhosSelecionados.length === 0}
+              className="px-6 py-2 bg-violet-600 hover:bg-violet-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl font-medium transition-colors shadow-sm shadow-violet-200 disabled:shadow-none"
             >
-              Salvar
+              {isEditing ? 'Salvar' : tamanhosSelecionados.length <= 1 ? 'Cadastrar' : `Cadastrar ${tamanhosSelecionados.length} Tamanhos`}
             </button>
           </div>
         </form>
