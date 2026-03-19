@@ -141,14 +141,14 @@ export default function LojaVirtual() {
             <Phone className="w-6 h-6" /> Confirmar no WhatsApp
           </button>
           
-          <button 
+          <button
             onClick={() => {
               setView('catalog');
               setFormData({nome: '', telefone: '', aluno: ''});
             }}
             className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-4 rounded-xl transition-colors"
           >
-            Voltar para a Loja
+            Continuar Comprando
           </button>
         </div>
       </div>
