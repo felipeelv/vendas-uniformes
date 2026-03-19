@@ -1,22 +1,52 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useStore } from '../store/useStore';
 import type { Produto } from '../store/useStore';
-import { ShoppingCart, Plus, Minus, CheckCircle2, ChevronLeft, ImageOff, Phone, School, User as Users, Trash2 } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, CheckCircle2, ChevronLeft, ImageOff, Phone, School, User as Users, Trash2, X } from 'lucide-react';
+
+interface ProdutoGroup {
+  nome: string;
+  categoria: string;
+  imagem?: string;
+  variantes: Produto[];
+  precoMin: number;
+  precoMax: number;
+}
 
 export default function LojaVirtual() {
   const { produtos, clientes, addCliente, registrarSaida } = useStore();
   const [carrinho, setCarrinho] = useState<Record<string, number>>({});
-  
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+
   // 'catalog' | 'cart' | 'checkout' | 'success'
   const [view, setView] = useState<'catalog' | 'cart' | 'checkout' | 'success'>('catalog');
-  
+
   const [formData, setFormData] = useState({
     nome: '',
     telefone: '',
     aluno: ''
   });
 
-  const handleAddToCart = (produto: Produto, qtdAdicionada: number, goToCart: boolean = true) => {
+  // Agrupar produtos por nome
+  const produtoGroups = useMemo(() => {
+    const groups = new Map<string, Produto[]>();
+    produtos.forEach(p => {
+      if (!groups.has(p.nome)) groups.set(p.nome, []);
+      groups.get(p.nome)!.push(p);
+    });
+    return Array.from(groups.entries()).map(([nome, variantes]): ProdutoGroup => ({
+      nome,
+      categoria: variantes[0].categoria,
+      imagem: variantes.find(v => v.imagem)?.imagem,
+      variantes,
+      precoMin: Math.min(...variantes.map(v => v.precoVenda)),
+      precoMax: Math.max(...variantes.map(v => v.precoVenda)),
+    }));
+  }, [produtos]);
+
+  const activeGroup = selectedGroup ? produtoGroups.find(g => g.nome === selectedGroup) : null;
+
+  const handleAddToCart = (produto: Produto, qtdAdicionada: number = 1, goToCart: boolean = false) => {
+    if (produto.quantidade === 0) return;
     setCarrinho(prev => {
       const current = prev[produto.id] || 0;
       const novoTotal = Math.min(produto.quantidade, current + qtdAdicionada);
@@ -158,9 +188,117 @@ export default function LojaVirtual() {
           <div className="p-4 sm:p-6 pb-24">
             <h2 className="text-2xl font-black text-slate-900 mb-6">Uniformes Escolares</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
-              {produtos.filter(p => p.quantidade > 0).map(produto => (
-                <ProdutoCard key={produto.id} produto={produto} onAdd={handleAddToCart} />
+              {produtoGroups.filter(g => g.variantes.some(v => v.quantidade > 0)).map(group => (
+                <div
+                  key={group.nome}
+                  onClick={() => setSelectedGroup(group.nome)}
+                  className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm flex flex-col relative transition-transform hover:-translate-y-1 hover:shadow-md duration-300 cursor-pointer"
+                >
+                  <div className="aspect-square bg-slate-50 relative overflow-hidden flex items-center justify-center p-4">
+                    {group.imagem ? (
+                      <img src={group.imagem} className="w-full h-full object-cover rounded-xl" alt={group.nome} />
+                    ) : (
+                      <ImageOff className="text-slate-300 w-10 h-10" />
+                    )}
+                  </div>
+                  <div className="p-4 sm:p-5 flex-1 flex flex-col">
+                    <p className="text-[9px] sm:text-[10px] font-black text-slate-400 mb-1 uppercase tracking-widest">{group.categoria}</p>
+                    <h3 className="text-sm sm:text-base font-extrabold text-slate-800 mb-2 leading-tight flex-1">{group.nome}</h3>
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg border border-slate-100">
+                        {group.variantes.filter(v => v.quantidade > 0).length} {group.variantes.filter(v => v.quantidade > 0).length === 1 ? 'tamanho' : 'tamanhos'}
+                      </span>
+                      <span className="text-emerald-600 font-black text-sm sm:text-base">
+                        {group.precoMin === group.precoMax ? formatBRL(group.precoMin) : `${formatBRL(group.precoMin)}+`}
+                      </span>
+                    </div>
+                    <button
+                      className="w-full py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-emerald-500 hover:bg-emerald-600 text-white transition-colors shadow-sm uppercase tracking-wide"
+                    >
+                      Escolher Tamanho
+                    </button>
+                  </div>
+                </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Modal de seleção de tamanho */}
+        {activeGroup && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50" onClick={() => setSelectedGroup(null)}>
+            <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-xl w-full sm:max-w-md overflow-hidden animate-in slide-in-from-bottom-8 sm:zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+              <div className="flex gap-4 p-5 border-b border-slate-100">
+                {activeGroup.imagem ? (
+                  <img src={activeGroup.imagem} className="w-20 h-20 rounded-xl object-cover bg-slate-100 shrink-0" />
+                ) : (
+                  <div className="w-20 h-20 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                    <ImageOff className="w-8 h-8 text-slate-300" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{activeGroup.categoria}</p>
+                  <h3 className="text-lg font-bold text-slate-900 leading-tight">{activeGroup.nome}</h3>
+                </div>
+                <button onClick={() => setSelectedGroup(null)} className="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition-colors self-start shrink-0">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-5">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Escolha o Tamanho</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {activeGroup.variantes.map(variante => {
+                    const esgotado = variante.quantidade === 0;
+                    const noCarrinho = carrinho[variante.id] || 0;
+                    return (
+                      <button
+                        key={variante.id}
+                        disabled={esgotado}
+                        onClick={() => handleAddToCart(variante)}
+                        className={`relative p-3 rounded-xl border-2 text-center transition-all ${
+                          esgotado
+                            ? 'border-slate-100 bg-slate-50 cursor-not-allowed'
+                            : noCarrinho > 0
+                              ? 'border-emerald-500 bg-emerald-50'
+                              : 'border-slate-200 bg-white hover:border-emerald-400 hover:bg-emerald-50'
+                        }`}
+                      >
+                        <span className={`block text-sm font-bold ${esgotado ? 'text-slate-300' : 'text-slate-800'}`}>
+                          {variante.tamanho}
+                        </span>
+                        {esgotado ? (
+                          <span className="block text-[9px] font-bold text-red-400 uppercase mt-0.5">Esgotado</span>
+                        ) : (
+                          <span className="block text-[10px] font-medium text-slate-400 mt-0.5">
+                            {formatBRL(variante.precoVenda)}
+                          </span>
+                        )}
+                        {noCarrinho > 0 && (
+                          <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-emerald-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center">
+                            {noCarrinho}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="px-5 pb-5 flex gap-3">
+                <button
+                  onClick={() => setSelectedGroup(null)}
+                  className="flex-1 py-3 rounded-xl font-bold text-sm bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+                >
+                  Continuar Comprando
+                </button>
+                <button
+                  onClick={() => { setSelectedGroup(null); setView('cart'); }}
+                  className="flex-1 py-3 rounded-xl font-bold text-sm bg-emerald-500 hover:bg-emerald-600 text-white transition-colors shadow-sm"
+                >
+                  Ver Carrinho
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -266,66 +404,6 @@ export default function LojaVirtual() {
         )}
 
       </main>
-    </div>
-  );
-}
-
-// Subcomponente de Card da Loja
-function ProdutoCard({ produto, onAdd }: { produto: Produto, onAdd: (produto: Produto, qtd: number, goToCart: boolean) => void }) {
-  const [qtd, setQtd] = useState(1);
-  const formatBRL = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
-
-  return (
-    <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm flex flex-col relative transition-transform hover:-translate-y-1 hover:shadow-md duration-300">
-      <div className="aspect-square bg-slate-50 relative overflow-hidden flex items-center justify-center p-4">
-        {produto.imagem ? (
-          <img src={produto.imagem} className="w-full h-full object-cover rounded-xl" alt={produto.nome} />
-        ) : (
-          <ImageOff className="text-slate-300 w-10 h-10" />
-        )}
-      </div>
-      <div className="p-4 sm:p-5 flex-1 flex flex-col">
-        <p className="text-[9px] sm:text-[10px] font-black text-slate-400 mb-1 uppercase tracking-widest">{produto.categoria}</p>
-        <h3 className="text-sm sm:text-base font-extrabold text-slate-800 mb-2 leading-tight flex-1">{produto.nome}</h3>
-        <div className="flex justify-between items-center mb-4">
-          <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg border border-slate-100">Tam: {produto.tamanho}</span>
-          <span className="text-emerald-600 font-black text-sm sm:text-base">{formatBRL(produto.precoVenda)}</span>
-        </div>
-        
-        <div className="flex flex-col gap-2.5 mt-auto">
-          {/* Controle Numérico Personalizado */}
-          <div className="flex items-center justify-between bg-slate-50/50 rounded-xl p-1 border border-slate-200">
-            <button 
-              onClick={() => setQtd(Math.max(1, qtd - 1))} 
-              className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-white rounded-lg shadow-sm text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
-            >
-              <Minus className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-            <span className="font-bold text-slate-700 text-sm sm:text-base selection:bg-transparent">Qtd: {qtd}</span>
-            <button 
-              onClick={() => setQtd(Math.min(produto.quantidade, qtd + 1))} 
-              className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-white rounded-lg shadow-sm text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
-            >
-              <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-          </div>
-          {/* Botões de Ação */}
-          <div className="grid grid-cols-2 gap-2 mt-1">
-            <button 
-              onClick={() => { onAdd(produto, qtd, false); setQtd(1); }} 
-              className="w-full flex-1 py-2 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors flex items-center justify-center shadow-sm whitespace-nowrap px-1"
-            >
-               + Adicionar
-            </button>
-            <button 
-              onClick={() => { onAdd(produto, qtd, true); setQtd(1); }} 
-              className="w-full flex-1 py-2 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-xs bg-emerald-500 hover:bg-emerald-600 text-white transition-colors flex items-center justify-center shadow-sm uppercase tracking-wide whitespace-nowrap px-1"
-            >
-               Comprar
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

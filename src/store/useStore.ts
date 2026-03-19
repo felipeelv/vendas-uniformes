@@ -1,13 +1,13 @@
 import { create } from 'zustand';
 
-export type Tamanho = 'Infantil' | 'PP' | 'P' | 'M' | 'G' | 'GG' | 'EXG';
+export const TAMANHOS_PADRAO = ['4', '6', '8', '10', '12', '14', '16', 'PP', 'P', 'M', 'G', 'GG', 'XG'] as const;
 export type Categoria = 'Camiseta' | 'Calça' | 'Bermuda' | 'Moletom' | 'Casaco';
 
 export interface Produto {
   id: string;
   nome: string;
   categoria: Categoria;
-  tamanho: Tamanho;
+  tamanho: string;
   cor: string;
   quantidade: number;
   precoCusto: number;
@@ -69,6 +69,8 @@ interface StoreState {
   addUsuario: (usuario: Omit<Usuario, 'id'>) => void;
   updateUsuario: (id: string, usuario: Partial<Usuario>) => void;
   deleteUsuario: (id: string) => void;
+  tamanhosCustom: string[];
+  addTamanhoCustom: (tamanho: string) => void;
 }
 
 const mockUsuarios: Usuario[] = [
@@ -111,6 +113,10 @@ export const useStore = create<StoreState>((set) => ({
   deleteUsuario: (id) => set(state => ({
     usuarios: state.usuarios.filter(u => u.id !== id),
     usuarioAtivo: state.usuarioAtivo?.id === id ? state.usuarios.find(u => u.id !== id) || null : state.usuarioAtivo
+  })),
+  tamanhosCustom: [],
+  addTamanhoCustom: (tamanho) => set(state => ({
+    tamanhosCustom: state.tamanhosCustom.includes(tamanho) ? state.tamanhosCustom : [...state.tamanhosCustom, tamanho]
   })),
   produtos: mockProdutos,
   clientes: mockClientes,
