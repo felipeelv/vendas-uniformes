@@ -21,7 +21,7 @@ function sortBySize(a: Produto, b: Produto) {
 }
 
 export default function Estoque() {
-  const { produtos, addProduto, updateProduto, deleteProduto, tamanhosCustom, addTamanhoCustom } = useStore();
+  const { produtos, addProduto, updateProduto, deleteProduto, tamanhosCustom, addTamanhoCustom, uploadImagem } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<Categoria | 'all'>('all');
   const [editedQtds, setEditedQtds] = useState<Record<string, number>>({});
@@ -32,6 +32,7 @@ export default function Estoque() {
   const [newSizeQtd, setNewSizeQtd] = useState(0);
   const [savingNewSize, setSavingNewSize] = useState(false);
   const [isNewProductOpen, setIsNewProductOpen] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState<string | null>(null); // group key
 
   const todosOsTamanhos = [...TAMANHOS_PADRAO, ...tamanhosCustom];
 
@@ -119,6 +120,19 @@ export default function Estoque() {
     setAddingSize(null);
     setNewSizeValue('');
     setNewSizeQtd(0);
+  };
+
+  const handleImageChange = async (group: ProductGroup, file: File) => {
+    setUploadingImage(group.key);
+    try {
+      const url = await uploadImagem(file);
+      for (const item of group.items) {
+        await updateProduto(item.id, { imagem: url });
+      }
+    } catch {
+      alert('Erro ao enviar imagem.');
+    }
+    setUploadingImage(null);
   };
 
   const totalEdited = Object.keys(editedQtds).filter(id => {
@@ -234,13 +248,34 @@ export default function Estoque() {
                         <td className={`px-4 py-2.5 sticky left-0 z-10 ${edited ? 'bg-amber-50/40' : 'bg-white'} ${isFirst ? 'border-t border-slate-200' : ''}`}>
                           {isFirst ? (
                             <div className="flex items-center gap-2.5">
-                              {group.imagem ? (
-                                <img src={group.imagem} alt="" className="w-8 h-8 rounded-md object-cover border border-slate-200 shrink-0" />
-                              ) : (
-                                <div className="w-8 h-8 rounded-md bg-slate-100 flex items-center justify-center shrink-0">
-                                  <Image className="w-4 h-4 text-slate-300" />
-                                </div>
-                              )}
+                              <label className="relative cursor-pointer group/img shrink-0" title="Clique para trocar a foto">
+                                {uploadingImage === group.key ? (
+                                  <div className="w-8 h-8 rounded-md bg-violet-100 flex items-center justify-center">
+                                    <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+                                  </div>
+                                ) : group.imagem ? (
+                                  <div className="relative">
+                                    <img src={group.imagem} alt="" className="w-8 h-8 rounded-md object-cover border border-slate-200" />
+                                    <div className="absolute inset-0 bg-black/40 rounded-md opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                                      <Upload className="w-3.5 h-3.5 text-white" />
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="w-8 h-8 rounded-md bg-slate-100 flex items-center justify-center group-hover/img:bg-violet-100 transition-colors">
+                                    <Image className="w-4 h-4 text-slate-300 group-hover/img:text-violet-400 transition-colors" />
+                                  </div>
+                                )}
+                                <input
+                                  type="file"
+                                  accept="image/jpeg,image/png,image/webp"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleImageChange(group, file);
+                                    e.target.value = '';
+                                  }}
+                                />
+                              </label>
                               <span className="font-semibold text-slate-800">{group.nome}</span>
                             </div>
                           ) : (
