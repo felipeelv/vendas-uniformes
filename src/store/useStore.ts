@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { supabase } from '../lib/supabase';
 
 export const TAMANHOS_PADRAO = ['4', '6', '8', '10', '12', '14', '16', 'PP', 'P', 'M', 'G', 'GG', 'XG'] as const;
 export type Categoria = 'Camiseta' | 'Calça' | 'Bermuda' | 'Moletom' | 'Casaco';
@@ -41,7 +42,6 @@ export interface Venda {
   tipoVenda: TipoVenda;
   metodoPagamento: MetodoPagamento;
   itens: VendaItem[];
-  // Campos legados mantidos para retrocompatibilidade
   produtoId: string;
   produtoNome: string;
   quantidade: number;
@@ -99,6 +99,8 @@ interface ItemEntrada {
 }
 
 interface StoreState {
+  loaded: boolean;
+  loadData: () => Promise<void>;
   isAutenticado: boolean;
   login: (id: string, senha: string) => boolean;
   logout: () => void;
@@ -142,38 +144,116 @@ interface StoreState {
   uploadImagem: (file: File) => Promise<string>;
 }
 
-const genId = () => Math.random().toString(36).substr(2, 9);
-
 const getDateStr = (date: Date) => date.toISOString().split('T')[0];
 
-const mockUsuarios: Usuario[] = [
-  { id: 'u1', nome: 'Felipe', role: 'Admin', senha: '1234' },
-  { id: 'u2', nome: 'Carlos', role: 'Gerente', senha: '1234' },
-  { id: 'u3', nome: 'Ana', role: 'Vendedor', senha: '1234' },
-];
+// Helpers para converter entre camelCase (app) e snake_case (DB)
+function dbToProduto(row: any): Produto {
+  return {
+    id: row.id,
+    nome: row.nome,
+    categoria: row.categoria,
+    tamanho: row.tamanho,
+    cor: row.cor,
+    quantidade: row.quantidade,
+    precoCusto: Number(row.preco_custo),
+    precoVenda: Number(row.preco_venda),
+    imagem: row.imagem || undefined,
+  };
+}
 
-const mockClientes: Cliente[] = [
-  { id: 'c1', nome: 'Mariana Silva (Mãe do Pedro)', telefone: '(11) 98765-4321', documento: '123.456.789-00' },
-  { id: 'c2', nome: 'Roberto Alves', telefone: '(11) 91234-5678', documento: '987.654.321-11' },
-];
+function dbToVenda(row: any, itens: VendaItem[]): Venda {
+  return {
+    id: row.id,
+    tipoVenda: row.tipo_venda,
+    metodoPagamento: row.metodo_pagamento,
+    itens,
+    produtoId: row.produto_id || '',
+    produtoNome: row.produto_nome || '',
+    quantidade: row.quantidade,
+    valorTotal: Number(row.valor_total),
+    data: row.data,
+    vendedorId: row.vendedor_id || '',
+    vendedorNome: row.vendedor_nome || '',
+    clienteId: row.cliente_id || undefined,
+    clienteNome: row.cliente_nome || undefined,
+  };
+}
 
-const mockProdutos: Produto[] = [
-  { id: '1', nome: 'Camiseta Padrão Manga Curta', categoria: 'Camiseta', tamanho: 'M', cor: 'Branca', quantidade: 45, precoCusto: 25.0, precoVenda: 45.0, imagem: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&q=80' },
-  { id: '2', nome: 'Calça de Frio Oficial', categoria: 'Calça', tamanho: 'G', cor: 'Azul Marinho', quantidade: 12, precoCusto: 40.0, precoVenda: 89.9, imagem: 'https://images.unsplash.com/photo-1542272454315-4c01d7abdf4a?w=400&q=80' },
-  { id: '3', nome: 'Moletom com Capuz', categoria: 'Moletom', tamanho: 'P', cor: 'Cinza', quantidade: 5, precoCusto: 60.0, precoVenda: 120.0, imagem: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=400&q=80' },
-  { id: '4', nome: 'Bermuda Tactel Esportiva', categoria: 'Bermuda', tamanho: '10', cor: 'Azul', quantidade: 30, precoCusto: 20.0, precoVenda: 35.0, imagem: 'https://images.unsplash.com/photo-1591195853828-11db59a44f6b?w=400&q=80' },
-];
+function dbToVendaItem(row: any): VendaItem {
+  return {
+    id: row.id,
+    vendaId: row.venda_id,
+    tipoItem: row.tipo_item,
+    produtoId: row.produto_id || '',
+    produtoNome: row.produto_nome || '',
+    quantidade: row.quantidade,
+    precoUnitario: Number(row.preco_unitario),
+    valorTotal: Number(row.valor_total),
+  };
+}
 
-const mockVendas: Venda[] = [
-  { id: 'v1', tipoVenda: 'venda', metodoPagamento: 'PIX', itens: [], produtoId: '1', produtoNome: 'Camiseta Padrão Manga Curta', quantidade: 2, valorTotal: 90.0, data: new Date(Date.now() - 86400000 * 2).toISOString(), vendedorId: 'u2', vendedorNome: 'Carlos (Vendedor)', clienteId: 'c1', clienteNome: 'Mariana Silva (Mãe do Pedro)' },
-  { id: 'v2', tipoVenda: 'venda', metodoPagamento: 'DINHEIRO', itens: [], produtoId: '4', produtoNome: 'Bermuda Tactel Esportiva', quantidade: 1, valorTotal: 35.0, data: new Date(Date.now() - 86400000 * 1).toISOString(), vendedorId: 'u3', vendedorNome: 'Ana (Vendedora)', clienteId: 'c2', clienteNome: 'Roberto Alves' },
-];
+function dbToFechamento(row: any): FechamentoCaixa {
+  return {
+    id: row.id,
+    data: row.data,
+    dataFechamento: row.data_fechamento,
+    operadorId: row.operador_id || '',
+    operadorNome: row.operador_nome || '',
+    totalVendas: Number(row.total_vendas),
+    totalTrocas: Number(row.total_trocas),
+    quantidadeVendas: row.quantidade_vendas,
+    quantidadeTrocas: row.quantidade_trocas,
+    totalPix: Number(row.total_pix),
+    totalCartao: Number(row.total_cartao),
+    totalDinheiro: Number(row.total_dinheiro),
+    status: row.status,
+  };
+}
 
-const mockDespesas: Despesa[] = [
-  { id: 'd1', descricao: 'Aluguel do Espaço', valor: 2500.0, data: new Date(Date.now() - 86400000 * 5).toISOString(), categoria: 'Fixa' },
-];
+function dbToDespesa(row: any): Despesa {
+  return {
+    id: row.id,
+    descricao: row.descricao,
+    valor: Number(row.valor),
+    data: row.data,
+    categoria: row.categoria,
+  };
+}
 
 export const useStore = create<StoreState>((set, get) => ({
+  loaded: false,
+
+  loadData: async () => {
+    if (!supabase) return;
+
+    const [usuariosRes, produtosRes, clientesRes, vendasRes, itensRes, despesasRes, fechamentosRes] = await Promise.all([
+      supabase.from('usuarios').select('*'),
+      supabase.from('produtos').select('*'),
+      supabase.from('clientes').select('*'),
+      supabase.from('vendas').select('*').order('data', { ascending: false }),
+      supabase.from('venda_itens').select('*'),
+      supabase.from('despesas').select('*').order('data', { ascending: false }),
+      supabase.from('fechamentos_caixa').select('*').order('data', { ascending: false }),
+    ]);
+
+    const allItens = (itensRes.data || []).map(dbToVendaItem);
+
+    const vendas = (vendasRes.data || []).map(row => {
+      const vendaItens = allItens.filter(i => i.vendaId === row.id);
+      return dbToVenda(row, vendaItens);
+    });
+
+    set({
+      loaded: true,
+      usuarios: (usuariosRes.data || []).map(u => ({ id: u.id, nome: u.nome, role: u.role, senha: u.senha })),
+      produtos: (produtosRes.data || []).map(dbToProduto),
+      clientes: (clientesRes.data || []).map(c => ({ id: c.id, nome: c.nome, telefone: c.telefone, documento: c.documento })),
+      vendas,
+      despesas: (despesasRes.data || []).map(dbToDespesa),
+      fechamentosCaixa: (fechamentosRes.data || []).map(dbToFechamento),
+    });
+  },
+
   isAutenticado: false,
   login: (id, senha) => {
     const usuario = get().usuarios.find(u => u.id === id);
@@ -184,260 +264,375 @@ export const useStore = create<StoreState>((set, get) => ({
     return false;
   },
   logout: () => set({ isAutenticado: false, usuarioAtivo: null }),
-  usuarios: mockUsuarios,
+
+  usuarios: [],
   usuarioAtivo: null,
   setUsuarioAtivo: (id) => set((state) => ({ usuarioAtivo: state.usuarios.find(u => u.id === id) || state.usuarioAtivo })),
-  addUsuario: (usuario) => set(state => ({ usuarios: [...state.usuarios, { ...usuario, id: genId() }] })),
-  updateUsuario: (id, data) => set(state => {
-    const updated = state.usuarios.map(u => u.id === id ? { ...u, ...data } : u);
-    const active = state.usuarioAtivo?.id === id ? { ...state.usuarioAtivo, ...data } : state.usuarioAtivo;
-    return { usuarios: updated, usuarioAtivo: active as Usuario };
-  }),
-  deleteUsuario: (id) => set(state => ({
-    usuarios: state.usuarios.filter(u => u.id !== id),
-    usuarioAtivo: state.usuarioAtivo?.id === id ? state.usuarios.find(u => u.id !== id) || null : state.usuarioAtivo
-  })),
+
+  addUsuario: async (usuario) => {
+    if (!supabase) return;
+    const { data } = await supabase.from('usuarios').insert({ nome: usuario.nome, role: usuario.role, senha: usuario.senha }).select().single();
+    if (data) {
+      set(state => ({ usuarios: [...state.usuarios, { id: data.id, nome: data.nome, role: data.role, senha: data.senha }] }));
+    }
+  },
+  updateUsuario: async (id, updates) => {
+    if (!supabase) return;
+    await supabase.from('usuarios').update(updates).eq('id', id);
+    set(state => {
+      const updated = state.usuarios.map(u => u.id === id ? { ...u, ...updates } : u);
+      const active = state.usuarioAtivo?.id === id ? { ...state.usuarioAtivo, ...updates } : state.usuarioAtivo;
+      return { usuarios: updated, usuarioAtivo: active as Usuario };
+    });
+  },
+  deleteUsuario: async (id) => {
+    if (!supabase) return;
+    await supabase.from('usuarios').delete().eq('id', id);
+    set(state => ({
+      usuarios: state.usuarios.filter(u => u.id !== id),
+      usuarioAtivo: state.usuarioAtivo?.id === id ? state.usuarios.find(u => u.id !== id) || null : state.usuarioAtivo,
+    }));
+  },
+
   tamanhosCustom: [],
   addTamanhoCustom: (tamanho) => set(state => ({
     tamanhosCustom: state.tamanhosCustom.includes(tamanho) ? state.tamanhosCustom : [...state.tamanhosCustom, tamanho]
   })),
-  produtos: mockProdutos,
-  clientes: mockClientes,
-  vendas: mockVendas,
-  despesas: mockDespesas,
+
+  produtos: [],
+  clientes: [],
+  vendas: [],
+  despesas: [],
   fechamentosCaixa: [],
-  addDespesa: (despesa) =>
-    set((state) => ({
-      despesas: [...state.despesas, { ...despesa, id: genId() }],
-    })),
-  addProduto: (produto) =>
-    set((state) => ({
-      produtos: [...state.produtos, { ...produto, id: genId() }],
-    })),
-  updateProduto: (id, updatedFields) =>
-    set((state) => ({
-      produtos: state.produtos.map((p) => (p.id === id ? { ...p, ...updatedFields } : p)),
-    })),
-  deleteProduto: (id) =>
-    set((state) => ({
-      produtos: state.produtos.filter((p) => p.id !== id),
-    })),
-  addCliente: (cliente) =>
-    set((state) => ({
-      clientes: [...state.clientes, { ...cliente, id: genId() }],
-    })),
-  updateCliente: (id, updatedFields) =>
-    set((state) => ({
-      clientes: state.clientes.map((c) => (c.id === id ? { ...c, ...updatedFields } : c)),
-    })),
-  deleteCliente: (id) =>
-    set((state) => ({
-      clientes: state.clientes.filter((c) => c.id !== id),
-    })),
-  registrarEntrada: (id, qtd) =>
-    set((state) => ({
-      produtos: state.produtos.map((p) => (p.id === id ? { ...p, quantidade: p.quantidade + qtd } : p)),
-    })),
 
-  registrarVenda: (itens, metodoPagamento, clienteId, clienteNome) =>
-    set((state) => {
-      const vendedor = get().usuarioAtivo;
-      if (!vendedor || itens.length === 0) return state;
+  addDespesa: async (despesa) => {
+    if (!supabase) return;
+    const { data } = await supabase.from('despesas').insert({
+      descricao: despesa.descricao,
+      valor: despesa.valor,
+      data: despesa.data,
+      categoria: despesa.categoria,
+    }).select().single();
+    if (data) {
+      set(state => ({ despesas: [...state.despesas, dbToDespesa(data)] }));
+    }
+  },
 
-      // Checar fechamento de caixa
-      const hoje = getDateStr(new Date());
-      if (get().isCaixaFechado(hoje)) return state;
+  addProduto: async (produto) => {
+    if (!supabase) return;
+    const { data } = await supabase.from('produtos').insert({
+      nome: produto.nome,
+      categoria: produto.categoria,
+      tamanho: produto.tamanho,
+      cor: produto.cor,
+      quantidade: produto.quantidade,
+      preco_custo: produto.precoCusto,
+      preco_venda: produto.precoVenda,
+      imagem: produto.imagem || null,
+    }).select().single();
+    if (data) {
+      set(state => ({ produtos: [...state.produtos, dbToProduto(data)] }));
+    }
+  },
 
-      const vendaId = genId();
-      const primeiroProduto = state.produtos.find(p => p.id === itens[0].produtoId);
+  updateProduto: async (id, updatedFields) => {
+    if (!supabase) return;
+    const dbFields: any = {};
+    if (updatedFields.nome !== undefined) dbFields.nome = updatedFields.nome;
+    if (updatedFields.categoria !== undefined) dbFields.categoria = updatedFields.categoria;
+    if (updatedFields.tamanho !== undefined) dbFields.tamanho = updatedFields.tamanho;
+    if (updatedFields.cor !== undefined) dbFields.cor = updatedFields.cor;
+    if (updatedFields.quantidade !== undefined) dbFields.quantidade = updatedFields.quantidade;
+    if (updatedFields.precoCusto !== undefined) dbFields.preco_custo = updatedFields.precoCusto;
+    if (updatedFields.precoVenda !== undefined) dbFields.preco_venda = updatedFields.precoVenda;
+    if (updatedFields.imagem !== undefined) dbFields.imagem = updatedFields.imagem;
 
-      const vendaItens: VendaItem[] = itens.map(item => {
-        const produto = state.produtos.find(p => p.id === item.produtoId);
-        return {
-          id: genId(),
-          vendaId,
-          tipoItem: 'saida' as TipoItemVenda,
-          produtoId: item.produtoId,
-          produtoNome: produto?.nome || 'Produto removido',
-          quantidade: item.quantidade,
-          precoUnitario: produto ? item.valorTotal / item.quantidade : 0,
-          valorTotal: item.valorTotal,
-        };
-      });
+    await supabase.from('produtos').update(dbFields).eq('id', id);
+    set(state => ({
+      produtos: state.produtos.map(p => p.id === id ? { ...p, ...updatedFields } : p),
+    }));
+  },
 
-      const totalGeral = itens.reduce((acc, item) => acc + item.valorTotal, 0);
+  deleteProduto: async (id) => {
+    if (!supabase) return;
+    await supabase.from('produtos').delete().eq('id', id);
+    set(state => ({ produtos: state.produtos.filter(p => p.id !== id) }));
+  },
 
-      const novaVenda: Venda = {
-        id: vendaId,
-        tipoVenda: 'venda',
-        metodoPagamento,
-        itens: vendaItens,
-        produtoId: itens[0].produtoId,
-        produtoNome: primeiroProduto?.nome || 'Produto removido',
-        quantidade: itens.reduce((acc, item) => acc + item.quantidade, 0),
-        valorTotal: totalGeral,
-        data: new Date().toISOString(),
-        vendedorId: vendedor.id,
-        vendedorNome: vendedor.nome,
-        clienteId,
-        clienteNome,
-      };
+  addCliente: async (cliente) => {
+    if (!supabase) return;
+    const { data } = await supabase.from('clientes').insert({
+      nome: cliente.nome,
+      telefone: cliente.telefone,
+      documento: cliente.documento,
+    }).select().single();
+    if (data) {
+      set(state => ({ clientes: [...state.clientes, { id: data.id, nome: data.nome, telefone: data.telefone, documento: data.documento }] }));
+    }
+  },
 
-      // Decrementar estoque de todos os itens
-      const novoProdutos = state.produtos.map(p => {
-        const itemVenda = itens.find(i => i.produtoId === p.id);
-        if (itemVenda) {
-          return { ...p, quantidade: Math.max(0, p.quantidade - itemVenda.quantidade) };
-        }
-        return p;
-      });
+  updateCliente: async (id, updatedFields) => {
+    if (!supabase) return;
+    await supabase.from('clientes').update(updatedFields).eq('id', id);
+    set(state => ({
+      clientes: state.clientes.map(c => c.id === id ? { ...c, ...updatedFields } : c),
+    }));
+  },
 
+  deleteCliente: async (id) => {
+    if (!supabase) return;
+    await supabase.from('clientes').delete().eq('id', id);
+    set(state => ({ clientes: state.clientes.filter(c => c.id !== id) }));
+  },
+
+  registrarEntrada: async (id, qtd) => {
+    if (!supabase) return;
+    const produto = get().produtos.find(p => p.id === id);
+    if (!produto) return;
+    const novaQtd = produto.quantidade + qtd;
+    await supabase.from('produtos').update({ quantidade: novaQtd }).eq('id', id);
+    set(state => ({
+      produtos: state.produtos.map(p => p.id === id ? { ...p, quantidade: novaQtd } : p),
+    }));
+  },
+
+  registrarVenda: async (itens, metodoPagamento, clienteId, clienteNome) => {
+    if (!supabase) return;
+    const vendedor = get().usuarioAtivo;
+    if (!vendedor || itens.length === 0) return;
+
+    const hoje = getDateStr(new Date());
+    if (get().isCaixaFechado(hoje)) return;
+
+    const state = get();
+    const primeiroProduto = state.produtos.find(p => p.id === itens[0].produtoId);
+    const totalGeral = itens.reduce((acc, item) => acc + item.valorTotal, 0);
+
+    // Inserir venda
+    const { data: vendaRow } = await supabase.from('vendas').insert({
+      tipo_venda: 'venda',
+      metodo_pagamento: metodoPagamento,
+      produto_id: itens[0].produtoId,
+      produto_nome: primeiroProduto?.nome || 'Produto removido',
+      quantidade: itens.reduce((acc, item) => acc + item.quantidade, 0),
+      valor_total: totalGeral,
+      data: new Date().toISOString(),
+      vendedor_id: vendedor.id,
+      vendedor_nome: vendedor.nome,
+      cliente_id: clienteId || null,
+      cliente_nome: clienteNome || null,
+    }).select().single();
+
+    if (!vendaRow) return;
+
+    // Inserir itens da venda
+    const itensToInsert = itens.map(item => {
+      const produto = state.produtos.find(p => p.id === item.produtoId);
       return {
-        produtos: novoProdutos,
-        vendas: [...state.vendas, novaVenda],
-      };
-    }),
-
-  registrarTroca: (itensEntrada, itensSaida, metodoPagamento, clienteId, clienteNome) =>
-    set((state) => {
-      const vendedor = get().usuarioAtivo;
-      if (!vendedor) return state;
-      if (itensSaida.length === 0 && itensEntrada.length === 0) return state;
-
-      // Checar fechamento de caixa
-      const hoje = getDateStr(new Date());
-      if (get().isCaixaFechado(hoje)) return state;
-
-      const vendaId = genId();
-
-      // Itens de entrada (devolvidos)
-      const vendaItensEntrada: VendaItem[] = itensEntrada.map(item => ({
-        id: genId(),
-        vendaId,
-        tipoItem: 'entrada' as TipoItemVenda,
-        produtoId: item.produtoId,
-        produtoNome: item.produtoNome,
+        venda_id: vendaRow.id,
+        tipo_item: 'saida',
+        produto_id: item.produtoId,
+        produto_nome: produto?.nome || 'Produto removido',
         quantidade: item.quantidade,
-        precoUnitario: item.precoUnitario,
-        valorTotal: item.valorTotal,
-      }));
+        preco_unitario: produto ? item.valorTotal / item.quantidade : 0,
+        valor_total: item.valorTotal,
+      };
+    });
+    const { data: itensRows } = await supabase.from('venda_itens').insert(itensToInsert).select();
 
-      // Itens de saida (novos produtos)
-      const vendaItensSaida: VendaItem[] = itensSaida.map(item => {
+    // Atualizar estoque no banco
+    for (const item of itens) {
+      const produto = state.produtos.find(p => p.id === item.produtoId);
+      if (produto) {
+        const novaQtd = Math.max(0, produto.quantidade - item.quantidade);
+        await supabase.from('produtos').update({ quantidade: novaQtd }).eq('id', item.produtoId);
+      }
+    }
+
+    // Atualizar state local
+    const vendaItens: VendaItem[] = (itensRows || []).map(dbToVendaItem);
+    const novaVenda = dbToVenda(vendaRow, vendaItens);
+    const novoProdutos = state.produtos.map(p => {
+      const itemVenda = itens.find(i => i.produtoId === p.id);
+      if (itemVenda) return { ...p, quantidade: Math.max(0, p.quantidade - itemVenda.quantidade) };
+      return p;
+    });
+
+    set({ produtos: novoProdutos, vendas: [novaVenda, ...state.vendas] });
+  },
+
+  registrarTroca: async (itensEntrada, itensSaida, metodoPagamento, clienteId, clienteNome) => {
+    if (!supabase) return;
+    const vendedor = get().usuarioAtivo;
+    if (!vendedor) return;
+    if (itensSaida.length === 0 && itensEntrada.length === 0) return;
+
+    const hoje = getDateStr(new Date());
+    if (get().isCaixaFechado(hoje)) return;
+
+    const state = get();
+    const totalSaida = itensSaida.reduce((acc, item) => acc + item.valorTotal, 0);
+    const totalEntrada = itensEntrada.reduce((acc, item) => acc + item.valorTotal, 0);
+    const diferenca = totalSaida - totalEntrada;
+
+    const primeiroProdutoSaida = itensSaida.length > 0
+      ? state.produtos.find(p => p.id === itensSaida[0].produtoId)
+      : null;
+
+    // Inserir venda (troca)
+    const { data: vendaRow } = await supabase.from('vendas').insert({
+      tipo_venda: 'troca',
+      metodo_pagamento: metodoPagamento,
+      produto_id: itensSaida[0]?.produtoId || itensEntrada[0]?.produtoId || '',
+      produto_nome: primeiroProdutoSaida?.nome || itensEntrada[0]?.produtoNome || 'Troca',
+      quantidade: itensSaida.reduce((acc, item) => acc + item.quantidade, 0),
+      valor_total: diferenca,
+      data: new Date().toISOString(),
+      vendedor_id: vendedor.id,
+      vendedor_nome: vendedor.nome,
+      cliente_id: clienteId || null,
+      cliente_nome: clienteNome || null,
+    }).select().single();
+
+    if (!vendaRow) return;
+
+    // Inserir itens
+    const allItensToInsert = [
+      ...itensEntrada.map(item => ({
+        venda_id: vendaRow.id,
+        tipo_item: 'entrada',
+        produto_id: item.produtoId,
+        produto_nome: item.produtoNome,
+        quantidade: item.quantidade,
+        preco_unitario: item.precoUnitario,
+        valor_total: item.valorTotal,
+      })),
+      ...itensSaida.map(item => {
         const produto = state.produtos.find(p => p.id === item.produtoId);
         return {
-          id: genId(),
-          vendaId,
-          tipoItem: 'saida' as TipoItemVenda,
-          produtoId: item.produtoId,
-          produtoNome: produto?.nome || 'Produto removido',
+          venda_id: vendaRow.id,
+          tipo_item: 'saida',
+          produto_id: item.produtoId,
+          produto_nome: produto?.nome || 'Produto removido',
           quantidade: item.quantidade,
-          precoUnitario: produto ? item.valorTotal / item.quantidade : 0,
-          valorTotal: item.valorTotal,
+          preco_unitario: produto ? item.valorTotal / item.quantidade : 0,
+          valor_total: item.valorTotal,
         };
-      });
+      }),
+    ];
+    const { data: itensRows } = await supabase.from('venda_itens').insert(allItensToInsert).select();
 
-      const totalSaida = itensSaida.reduce((acc, item) => acc + item.valorTotal, 0);
-      const totalEntrada = itensEntrada.reduce((acc, item) => acc + item.valorTotal, 0);
-      const diferenca = totalSaida - totalEntrada;
+    // Atualizar estoque
+    for (const item of itensEntrada) {
+      const produto = state.produtos.find(p => p.id === item.produtoId);
+      if (produto) {
+        await supabase.from('produtos').update({ quantidade: produto.quantidade + item.quantidade }).eq('id', item.produtoId);
+      }
+    }
+    for (const item of itensSaida) {
+      const produto = state.produtos.find(p => p.id === item.produtoId);
+      if (produto) {
+        await supabase.from('produtos').update({ quantidade: Math.max(0, produto.quantidade - item.quantidade) }).eq('id', item.produtoId);
+      }
+    }
 
-      const primeiroProdutoSaida = itensSaida.length > 0
-        ? state.produtos.find(p => p.id === itensSaida[0].produtoId)
-        : null;
+    // Atualizar state local
+    const vendaItens: VendaItem[] = (itensRows || []).map(dbToVendaItem);
+    const novaVenda = dbToVenda(vendaRow, vendaItens);
+    const novoProdutos = state.produtos.map(p => {
+      const itemEntrada = itensEntrada.find(i => i.produtoId === p.id);
+      const itemSaida = itensSaida.find(i => i.produtoId === p.id);
+      let novaQtd = p.quantidade;
+      if (itemEntrada) novaQtd += itemEntrada.quantidade;
+      if (itemSaida) novaQtd = Math.max(0, novaQtd - itemSaida.quantidade);
+      return { ...p, quantidade: novaQtd };
+    });
 
-      const novaVenda: Venda = {
-        id: vendaId,
-        tipoVenda: 'troca',
-        metodoPagamento,
-        itens: [...vendaItensEntrada, ...vendaItensSaida],
-        produtoId: itensSaida[0]?.produtoId || itensEntrada[0]?.produtoId || '',
-        produtoNome: primeiroProdutoSaida?.nome || itensEntrada[0]?.produtoNome || 'Troca',
-        quantidade: itensSaida.reduce((acc, item) => acc + item.quantidade, 0),
-        valorTotal: diferenca,
-        data: new Date().toISOString(),
-        vendedorId: vendedor.id,
-        vendedorNome: vendedor.nome,
-        clienteId,
-        clienteNome,
-      };
+    set({ produtos: novoProdutos, vendas: [novaVenda, ...state.vendas] });
+  },
 
-      // Atualizar estoque: incrementar devolvidos, decrementar novos
-      const novoProdutos = state.produtos.map(p => {
-        const itemEntrada = itensEntrada.find(i => i.produtoId === p.id);
-        const itemSaida = itensSaida.find(i => i.produtoId === p.id);
-        let novaQtd = p.quantidade;
-        if (itemEntrada) novaQtd += itemEntrada.quantidade;
-        if (itemSaida) novaQtd = Math.max(0, novaQtd - itemSaida.quantidade);
-        return { ...p, quantidade: novaQtd };
-      });
+  fecharCaixa: async (data) => {
+    if (!supabase) return;
+    const vendedor = get().usuarioAtivo;
+    if (!vendedor) return;
 
-      return {
-        produtos: novoProdutos,
-        vendas: [...state.vendas, novaVenda],
-      };
-    }),
+    const state = get();
+    const jaFechado = state.fechamentosCaixa.find(f => f.data === data && f.status === 'fechado');
+    if (jaFechado) return;
 
-  fecharCaixa: (data) =>
-    set((state) => {
-      const vendedor = get().usuarioAtivo;
-      if (!vendedor) return state;
+    const vendasDoDia = state.vendas.filter(v => getDateStr(new Date(v.data)) === data);
+    const vendas = vendasDoDia.filter(v => v.tipoVenda === 'venda');
+    const trocas = vendasDoDia.filter(v => v.tipoVenda === 'troca');
 
-      // Verificar se ja esta fechado
-      const jaFechado = state.fechamentosCaixa.find(f => f.data === data && f.status === 'fechado');
-      if (jaFechado) return state;
+    const totalVendas = vendas.reduce((acc, v) => acc + v.valorTotal, 0);
+    const totalTrocas = trocas.reduce((acc, v) => acc + v.valorTotal, 0);
+    const totalPix = vendasDoDia.filter(v => v.metodoPagamento === 'PIX').reduce((acc, v) => acc + v.valorTotal, 0);
+    const totalCartao = vendasDoDia.filter(v => v.metodoPagamento === 'CARTAO').reduce((acc, v) => acc + v.valorTotal, 0);
+    const totalDinheiro = vendasDoDia.filter(v => v.metodoPagamento === 'DINHEIRO').reduce((acc, v) => acc + v.valorTotal, 0);
 
-      // Filtrar vendas do dia
-      const vendasDoDia = state.vendas.filter(v => getDateStr(new Date(v.data)) === data);
+    // Verificar se existe um fechamento reaberto para substituir
+    const existente = state.fechamentosCaixa.find(f => f.data === data);
 
-      const vendas = vendasDoDia.filter(v => v.tipoVenda === 'venda');
-      const trocas = vendasDoDia.filter(v => v.tipoVenda === 'troca');
-
-      const totalVendas = vendas.reduce((acc, v) => acc + v.valorTotal, 0);
-      const totalTrocas = trocas.reduce((acc, v) => acc + v.valorTotal, 0);
-
-      const totalPix = vendasDoDia.filter(v => v.metodoPagamento === 'PIX').reduce((acc, v) => acc + v.valorTotal, 0);
-      const totalCartao = vendasDoDia.filter(v => v.metodoPagamento === 'CARTAO').reduce((acc, v) => acc + v.valorTotal, 0);
-      const totalDinheiro = vendasDoDia.filter(v => v.metodoPagamento === 'DINHEIRO').reduce((acc, v) => acc + v.valorTotal, 0);
+    if (existente) {
+      await supabase.from('fechamentos_caixa').update({
+        data_fechamento: new Date().toISOString(),
+        operador_id: vendedor.id,
+        operador_nome: vendedor.nome,
+        total_vendas: totalVendas,
+        total_trocas: totalTrocas,
+        quantidade_vendas: vendas.length,
+        quantidade_trocas: trocas.length,
+        total_pix: totalPix,
+        total_cartao: totalCartao,
+        total_dinheiro: totalDinheiro,
+        status: 'fechado',
+      }).eq('id', existente.id);
 
       const fechamento: FechamentoCaixa = {
-        id: genId(),
-        data,
+        ...existente,
         dataFechamento: new Date().toISOString(),
         operadorId: vendedor.id,
         operadorNome: vendedor.nome,
-        totalVendas,
-        totalTrocas,
-        quantidadeVendas: vendas.length,
-        quantidadeTrocas: trocas.length,
-        totalPix,
-        totalCartao,
-        totalDinheiro,
+        totalVendas, totalTrocas,
+        quantidadeVendas: vendas.length, quantidadeTrocas: trocas.length,
+        totalPix, totalCartao, totalDinheiro,
         status: 'fechado',
       };
+      set({ fechamentosCaixa: state.fechamentosCaixa.map(f => f.id === existente.id ? fechamento : f) });
+    } else {
+      const { data: row } = await supabase.from('fechamentos_caixa').insert({
+        data,
+        data_fechamento: new Date().toISOString(),
+        operador_id: vendedor.id,
+        operador_nome: vendedor.nome,
+        total_vendas: totalVendas,
+        total_trocas: totalTrocas,
+        quantidade_vendas: vendas.length,
+        quantidade_trocas: trocas.length,
+        total_pix: totalPix,
+        total_cartao: totalCartao,
+        total_dinheiro: totalDinheiro,
+        status: 'fechado',
+      }).select().single();
 
-      // Substituir fechamento existente (reaberto) ou adicionar novo
-      const existente = state.fechamentosCaixa.findIndex(f => f.data === data);
-      let novosFechamentos: FechamentoCaixa[];
-      if (existente >= 0) {
-        novosFechamentos = state.fechamentosCaixa.map((f, i) => i === existente ? fechamento : f);
-      } else {
-        novosFechamentos = [...state.fechamentosCaixa, fechamento];
+      if (row) {
+        set({ fechamentosCaixa: [...state.fechamentosCaixa, dbToFechamento(row)] });
       }
+    }
+  },
 
-      return { fechamentosCaixa: novosFechamentos };
-    }),
+  reabrirCaixa: async (id) => {
+    if (!supabase) return;
+    const usuario = get().usuarioAtivo;
+    if (!usuario || usuario.role !== 'Admin') return;
 
-  reabrirCaixa: (id) =>
-    set((state) => {
-      const usuario = get().usuarioAtivo;
-      if (!usuario || usuario.role !== 'Admin') return state;
-
-      return {
-        fechamentosCaixa: state.fechamentosCaixa.map(f =>
-          f.id === id ? { ...f, status: 'reaberto' as const } : f
-        ),
-      };
-    }),
+    await supabase.from('fechamentos_caixa').update({ status: 'reaberto' }).eq('id', id);
+    set(state => ({
+      fechamentosCaixa: state.fechamentosCaixa.map(f =>
+        f.id === id ? { ...f, status: 'reaberto' as const } : f
+      ),
+    }));
+  },
 
   isCaixaFechado: (data) => {
     const state = get();
@@ -445,7 +640,17 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   uploadImagem: async (file: File) => {
-    // Fallback local: cria uma URL temporaria para a imagem
-    return URL.createObjectURL(file);
+    if (!supabase) return URL.createObjectURL(file);
+
+    const fileName = `${Date.now()}-${file.name}`;
+    const { data, error } = await supabase.storage.from('produtos').upload(fileName, file);
+
+    if (error || !data) {
+      console.error('Erro upload:', error);
+      return URL.createObjectURL(file);
+    }
+
+    const { data: urlData } = supabase.storage.from('produtos').getPublicUrl(data.path);
+    return urlData.publicUrl;
   },
 }));

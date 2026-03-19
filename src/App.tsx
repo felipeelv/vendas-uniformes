@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import Layout from './components/Layout';
 import Home from './pages/Home';
@@ -28,6 +29,21 @@ function RotaPorRole({ roles }: { roles: UserRole[] }) {
 }
 
 function App() {
+  const loadData = useStore((s) => s.loadData);
+  const loaded = useStore((s) => s.loaded);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  if (!loaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="text-white text-lg font-medium animate-pulse">Carregando...</div>
+      </div>
+    );
+  }
+
   return (
     <BrowserRouter>
       <Routes>
