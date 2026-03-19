@@ -161,16 +161,16 @@ export default function Financeiro() {
   );
 }
 
-function NovaDespesaModal({ onClose, onAdd }: { onClose: () => void, onAdd: (d: Omit<Despesa, 'id'>) => void }) {
+function NovaDespesaModal({ onClose, onAdd }: { onClose: () => void, onAdd: (d: Omit<Despesa, 'id'>) => Promise<void> | void }) {
   const [formData, setFormData] = useState({
     descricao: '',
     valor: 0,
     categoria: 'Outros' as Despesa['categoria']
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onAdd({
+    await onAdd({
       ...formData,
       data: new Date().toISOString()
     });

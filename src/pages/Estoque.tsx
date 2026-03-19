@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useStore } from '../store/useStore';
 import type { Produto, Categoria } from '../store/useStore';
 import { TAMANHOS_PADRAO } from '../store/useStore';
-import { Plus, Search, Edit2, Trash2, AlertCircle, X, Upload, ImageOff } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, AlertCircle, X, Upload } from 'lucide-react';
 
 export default function Estoque() {
   const { produtos, deleteProduto } = useStore();
@@ -25,9 +25,9 @@ export default function Estoque() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir este produto?')) {
-      deleteProduto(id);
+      await deleteProduto(id);
     }
   };
 

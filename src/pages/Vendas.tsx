@@ -86,16 +86,16 @@ export default function Vendas() {
     setCheckoutStep('payment');
   };
 
-  const handleConfirmarPagamento = () => {
+  const handleConfirmarPagamento = async () => {
     let clienteNome = '';
     if (clienteSelecionado) {
       const cli = clientes.find(c => c.id === clienteSelecionado);
       if (cli) clienteNome = cli.nome;
     }
 
-    carrinhoItens.forEach(item => {
-      registrarSaida(item.produto.id, item.qtd, item.produto.precoVenda * item.qtd, clienteSelecionado || undefined, clienteNome || undefined);
-    });
+    for (const item of carrinhoItens) {
+      await registrarSaida(item.produto.id, item.qtd, item.produto.precoVenda * item.qtd, clienteSelecionado || undefined, clienteNome || undefined);
+    }
 
     setVendaSucesso(true);
     setTimeout(() => {

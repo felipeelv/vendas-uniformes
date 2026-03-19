@@ -82,26 +82,30 @@ export default function LojaVirtual() {
   const totalVenda = carrinhoItens.reduce((acc, item) => acc + (item.produto.precoVenda * item.qtd), 0);
   const totalPecas = carrinhoItens.reduce((acc, item) => acc + item.qtd, 0);
 
-  const handleFinalizar = (e: React.FormEvent) => {
+  const handleFinalizar = async (e: React.FormEvent) => {
     e.preventDefault();
     if (carrinhoItens.length === 0) return;
 
-    let clienteId = Math.random().toString(36).substr(2, 9);
+    let clienteId: string;
     const clienteExistente = clientes.find(c => c.documento === formData.telefone || c.telefone === formData.telefone);
-    
+
     if (clienteExistente) {
       clienteId = clienteExistente.id;
     } else {
-      addCliente({
+      await addCliente({
         nome: `${formData.nome} (Resp: ${formData.aluno})`,
         telefone: formData.telefone,
         documento: 'Site'
       });
+      // Buscar o cliente recém-criado
+      const novosClientes = useStore.getState().clientes;
+      const novoCli = novosClientes.find(c => c.telefone === formData.telefone);
+      clienteId = novoCli?.id || '';
     }
-    
-    carrinhoItens.forEach(item => {
-      registrarSaida(item.produto.id, item.qtd, item.produto.precoVenda * item.qtd, clienteId, formData.nome);
-    });
+
+    for (const item of carrinhoItens) {
+      await registrarSaida(item.produto.id, item.qtd, item.produto.precoVenda * item.qtd, clienteId, formData.nome);
+    }
 
     setView('success');
     setCarrinho({});

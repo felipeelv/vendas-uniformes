@@ -4,7 +4,7 @@ import type { Usuario } from '../store/useStore';
 import { Users, Plus, Edit2, Trash2, X } from 'lucide-react';
 
 export default function Vendedores() {
-  const { usuarios, addUsuario, updateUsuario, deleteUsuario } = useStore();
+  const { usuarios, deleteUsuario } = useStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null);
 
@@ -13,9 +13,9 @@ export default function Vendedores() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir este usuário/vendedor?')) {
-      deleteUsuario(id);
+      await deleteUsuario(id);
     }
   };
 
@@ -113,12 +113,12 @@ function UsuarioModal({ usuario, onClose }: {
     role: usuario?.role || 'Vendedor' as 'Admin' | 'Vendedor'
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (usuario) {
-      updateUsuario(usuario.id, formData);
+      await updateUsuario(usuario.id, formData);
     } else {
-      addUsuario(formData);
+      await addUsuario(formData);
     }
     onClose();
   };

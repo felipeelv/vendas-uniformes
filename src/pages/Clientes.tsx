@@ -19,9 +19,9 @@ export default function Clientes() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir este cliente?')) {
-      deleteCliente(id);
+      await deleteCliente(id);
     }
   };
 
@@ -131,7 +131,7 @@ export default function Clientes() {
 function ClienteModal({ cliente, onClose, onSave }: { 
   cliente: Cliente | null, 
   onClose: () => void, 
-  onSave: (idOrData: any, data?: any) => void 
+  onSave: (idOrData: any, data?: any) => Promise<void> | void
 }) {
   const [formData, setFormData] = useState({
     nome: cliente?.nome || '',
@@ -139,12 +139,12 @@ function ClienteModal({ cliente, onClose, onSave }: {
     documento: cliente?.documento || ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cliente) {
-      onSave(cliente.id, formData);
+      await onSave(cliente.id, formData);
     } else {
-      onSave(formData);
+      await onSave(formData);
     }
     onClose();
   };
