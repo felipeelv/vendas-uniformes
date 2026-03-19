@@ -425,6 +425,14 @@ export default function Vendas() {
                     {isTroca ? 'Confirmar Troca' : 'Confirmar Pagamento'}
                   </button>
 
+                  <button
+                    onClick={() => setCheckoutStep('cart')}
+                    className="w-full mt-3 py-3 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-100 transition-all flex items-center justify-center gap-2 border border-transparent hover:border-slate-200"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Voltar à Venda
+                  </button>
+
                   <div className="text-center mt-4">
                     <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">
                       Operador: <span className="text-slate-600">{usuarioAtivo?.nome || 'Nao logado'}</span>
