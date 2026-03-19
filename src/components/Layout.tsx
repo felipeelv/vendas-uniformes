@@ -18,7 +18,7 @@ const sidebarLinks = [
 
 export default function Layout() {
   const navigate = useNavigate();
-  const { usuarioAtivo, usuarios, setUsuarioAtivo, logout } = useStore();
+  const { usuarioAtivo, logout } = useStore();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const handleNovaVenda = () => {
