@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useStore } from '../store/useStore';
 import type { Produto } from '../store/useStore';
-import { ShoppingCart, Plus, Minus, Search, CheckCircle2, ChevronRight, ChevronLeft, ImageOff, Trash2, X, RefreshCw, ArrowDownLeft, Lock } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Search, CheckCircle2, ChevronRight, ChevronLeft, ImageOff, Trash2, X, RefreshCw, ArrowDownLeft, Lock, QrCode, CreditCard, Banknote, Package } from 'lucide-react';
 
 interface ProdutoGroup {
   nome: string;
@@ -44,7 +44,6 @@ export default function Vendas() {
 
   const categorias = ['Todas', ...Array.from(new Set(produtos.map(p => p.categoria)))];
 
-  // Agrupar produtos por nome
   const produtoGroups = useMemo(() => {
     const groups = new Map<string, Produto[]>();
     produtos.forEach(p => {
@@ -89,6 +88,13 @@ export default function Vendas() {
     });
   };
 
+  const handleDeleteFromCart = (id: string) => {
+    setCarrinho(prev => {
+      const { [id]: _, ...rest } = prev;
+      return rest;
+    });
+  };
+
   const handleClearCart = () => {
     setCarrinho({});
     setItensDevolvidos([]);
@@ -100,7 +106,6 @@ export default function Vendas() {
     const produto = produtos.find(p => p.id === produtoDevolvidoId);
     if (!produto) return;
 
-    // Verificar se ja foi adicionado
     const existente = itensDevolvidos.find(i => i.produtoId === produtoDevolvidoId);
     if (existente) {
       setItensDevolvidos(prev => prev.map(i =>
@@ -188,22 +193,259 @@ export default function Vendas() {
       setCheckoutStep('cart');
       setIsTroca(false);
       setItensDevolvidos([]);
-    }, 2000);
+    }, 2500);
   };
 
   const formatBRL = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
-  // Calcular total de itens no carrinho para um grupo
   const getGroupCartCount = (group: ProdutoGroup) => {
     return group.variantes.reduce((acc, v) => acc + (carrinho[v.id] || 0), 0);
   };
 
   const activeGroup = selectedGroup ? produtoGroups.find(g => g.nome === selectedGroup) : null;
 
+  // ==========================================
+  // TELA DE CHECKOUT FULLSCREEN (estilo ML)
+  // ==========================================
+  if (checkoutStep === 'payment') {
+    return (
+      <div className="fixed inset-0 bg-[#f5f5f5] z-50 flex flex-col overflow-hidden animate-in fade-in duration-200">
+        {/* Header */}
+        <div className={`h-14 ${isTroca ? 'bg-amber-500' : 'bg-emerald-600'} flex items-center px-4 sm:px-8 shrink-0`}>
+          <div className="max-w-[1200px] mx-auto w-full flex items-center gap-4">
+            <button onClick={() => setCheckoutStep('cart')} className="p-2 -ml-2 hover:bg-white/20 rounded-full transition-colors text-white">
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <h1 className="text-white font-bold text-lg tracking-tight">
+              {isTroca ? 'Finalizar Troca' : 'Finalizar Compra'}
+            </h1>
+          </div>
+        </div>
+
+        {/* Overlay de sucesso */}
+        {vendaSucesso && (
+          <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-6 text-center animate-in zoom-in fade-in">
+            <div className={`w-28 h-28 ${isTroca ? 'bg-amber-100' : 'bg-emerald-100'} rounded-full flex items-center justify-center mb-8 shadow-2xl ${isTroca ? 'shadow-amber-200' : 'shadow-emerald-200'}`}>
+              <CheckCircle2 className={`w-14 h-14 ${isTroca ? 'text-amber-600' : 'text-emerald-600'}`} />
+            </div>
+            <h2 className="text-4xl font-black text-slate-900 mb-3">{mensagemSucesso}</h2>
+            <p className="text-lg text-slate-500 font-medium">
+              {isTroca ? 'A troca foi registrada com sucesso.' : 'A venda foi registrada com sucesso.'}
+            </p>
+          </div>
+        )}
+
+        {/* Conteudo */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-[1200px] mx-auto w-full px-4 sm:px-8 py-6">
+            <div className="flex flex-col lg:flex-row gap-6">
+
+              {/* Esquerda: Lista de itens */}
+              <div className="flex-1 space-y-4">
+
+                {/* Card de itens devolvidos (troca) */}
+                {isTroca && itensDevolvidos.length > 0 && (
+                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                    <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3">
+                      <ArrowDownLeft className="w-5 h-5 text-amber-600" />
+                      <span className="font-bold text-slate-800">Produtos Devolvidos</span>
+                      <span className="text-xs text-amber-600 font-bold bg-amber-50 px-2.5 py-1 rounded-full ml-auto">{itensDevolvidos.length} {itensDevolvidos.length === 1 ? 'item' : 'itens'}</span>
+                    </div>
+                    <div className="divide-y divide-slate-100">
+                      {itensDevolvidos.map(item => {
+                        const prod = produtos.find(p => p.id === item.produtoId);
+                        return (
+                          <div key={item.produtoId} className="flex items-center gap-4 px-5 py-4">
+                            <div className="w-20 h-20 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0 overflow-hidden">
+                              {prod?.imagem ? (
+                                <img src={prod.imagem} className="w-full h-full object-cover" />
+                              ) : (
+                                <ImageOff className="w-6 h-6 text-amber-300" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-slate-800 leading-tight">{item.produtoNome}</p>
+                              <p className="text-sm text-amber-600 font-bold mt-1">
+                                {item.quantidade > 1 && `${item.quantidade}x `}{formatBRL(item.precoUnitario)}
+                              </p>
+                              <span className="inline-flex items-center gap-1 text-[10px] font-black text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full uppercase tracking-wider mt-1.5">
+                                <RefreshCw className="w-3 h-3" /> Devolucao
+                              </span>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="text-lg font-bold text-amber-600">{formatBRL(item.valorTotal)}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Card de novos itens */}
+                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                  <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3">
+                    <Package className="w-5 h-5 text-slate-500" />
+                    <span className="font-bold text-slate-800">
+                      {isTroca ? 'Novos Produtos' : 'Produtos da Compra'}
+                    </span>
+                    <span className="text-xs text-slate-500 font-bold bg-slate-100 px-2.5 py-1 rounded-full ml-auto">{totalPecas} {totalPecas === 1 ? 'item' : 'itens'}</span>
+                  </div>
+                  <div className="divide-y divide-slate-100">
+                    {carrinhoItens.map(({ produto, qtd }) => (
+                      <div key={produto.id} className="flex items-center gap-4 px-5 py-4">
+                        <div className="w-20 h-20 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0 overflow-hidden">
+                          {produto.imagem ? (
+                            <img src={produto.imagem} className="w-full h-full object-cover" />
+                          ) : (
+                            <ImageOff className="w-6 h-6 text-slate-300" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-slate-800 leading-tight">{produto.nome}</p>
+                          <p className="text-sm text-slate-500 mt-0.5">Tamanho: <strong>{produto.tamanho}</strong> &middot; {produto.cor}</p>
+                          <div className="flex items-center gap-3 mt-2">
+                            <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden">
+                              <button onClick={() => handleRemoveFromCart(produto.id)} className="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors border-r border-slate-200">
+                                <Minus className="w-3.5 h-3.5" />
+                              </button>
+                              <span className="w-10 text-center text-sm font-bold text-slate-800">{qtd}</span>
+                              <button onClick={() => handleAddToCart(produto)} className="w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors border-l border-slate-200">
+                                <Plus className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            <span className="text-xs text-slate-400 font-medium">+{produto.quantidade - qtd} disponiveis</span>
+                            <button onClick={() => handleDeleteFromCart(produto.id)} className="ml-auto p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Remover item">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-lg font-bold text-slate-900">{formatBRL(produto.precoVenda * qtd)}</p>
+                          {qtd > 1 && <p className="text-xs text-slate-400 mt-0.5">{formatBRL(produto.precoVenda)} cada</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Forma de pagamento */}
+                {(!isTroca || totalVenda > 0) && (
+                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                    <div className="px-5 py-4 border-b border-slate-100">
+                      <span className="font-bold text-slate-800">
+                        {isTroca ? 'Pagamento da Diferenca' : 'Forma de Pagamento'}
+                      </span>
+                    </div>
+                    <div className="p-5 grid grid-cols-3 gap-3">
+                      <button onClick={() => setMetodoPagamento('PIX')} className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${metodoPagamento === 'PIX' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300'}`}>
+                        <QrCode className="w-6 h-6" />
+                        <span className="font-bold text-sm">PIX</span>
+                      </button>
+                      <button onClick={() => setMetodoPagamento('CARTAO')} className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${metodoPagamento === 'CARTAO' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300'}`}>
+                        <CreditCard className="w-6 h-6" />
+                        <span className="font-bold text-sm">Cartao</span>
+                      </button>
+                      <button onClick={() => setMetodoPagamento('DINHEIRO')} className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${metodoPagamento === 'DINHEIRO' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300'}`}>
+                        <Banknote className="w-6 h-6" />
+                        <span className="font-bold text-sm">Dinheiro</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Troca direta / credito */}
+                {isTroca && totalVenda <= 0 && (
+                  <div className={`rounded-xl border p-5 ${totalVenda === 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
+                    <div className="flex items-center gap-3">
+                      <RefreshCw className={`w-6 h-6 ${totalVenda === 0 ? 'text-emerald-600' : 'text-amber-600'}`} />
+                      <div>
+                        <h3 className={`font-bold ${totalVenda === 0 ? 'text-emerald-800' : 'text-amber-800'}`}>
+                          {totalVenda === 0 ? 'Troca Direta' : 'Credito ao Cliente'}
+                        </h3>
+                        <p className={`text-sm ${totalVenda === 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                          {totalVenda === 0
+                            ? 'Nenhum pagamento necessario.'
+                            : `O cliente tem um credito de ${formatBRL(Math.abs(totalVenda))}.`
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Direita: Resumo da compra (sidebar fixa) */}
+              <div className="w-full lg:w-[340px] shrink-0">
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 lg:sticky lg:top-6">
+                  <h2 className="font-bold text-lg text-slate-800 mb-5">Resumo da compra</h2>
+
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Produtos ({totalPecas})</span>
+                      <span className="font-medium text-slate-800">{formatBRL(totalSaida)}</span>
+                    </div>
+
+                    {isTroca && itensDevolvidos.length > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-amber-600">Devolvidos ({itensDevolvidos.reduce((a, i) => a + i.quantidade, 0)})</span>
+                        <span className="font-medium text-amber-600">-{formatBRL(totalEntrada)}</span>
+                      </div>
+                    )}
+
+                    {clienteSelecionado && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Cliente</span>
+                        <span className="font-medium text-slate-800 text-right max-w-[160px] truncate">
+                          {clientes.find(c => c.id === clienteSelecionado)?.nome || '-'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border-t border-slate-100 mt-4 pt-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-bold text-slate-900">Total</span>
+                      <span className={`text-2xl font-black ${isTroca && totalVenda <= 0 ? 'text-amber-600' : 'text-slate-900'}`}>
+                        {formatBRL(Math.abs(totalVenda))}
+                      </span>
+                    </div>
+                    {isTroca && totalVenda < 0 && (
+                      <p className="text-xs text-amber-600 text-right mt-1 font-medium">Credito ao cliente</p>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={handleConfirmarPagamento}
+                    className={`w-full mt-6 py-4 rounded-xl font-black text-base ${
+                      isTroca ? 'bg-amber-500 hover:bg-amber-600' : 'bg-emerald-600 hover:bg-emerald-700'
+                    } text-white shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2`}
+                  >
+                    <CheckCircle2 className="w-5 h-5" />
+                    {isTroca ? 'Confirmar Troca' : 'Confirmar Pagamento'}
+                  </button>
+
+                  <div className="text-center mt-4">
+                    <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">
+                      Operador: <span className="text-slate-600">{usuarioAtivo?.nome || 'Nao logado'}</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // TELA PRINCIPAL: Catalogo + Carrinho
+  // ==========================================
   return (
     <div className="flex flex-col lg:flex-row gap-6 lg:h-[calc(100vh-8rem)]">
 
-      {/* Esquerda: Catalogo / E-commerce Galeria */}
+      {/* Esquerda: Catalogo */}
       <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden h-[800px] lg:h-auto">
         <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50 space-y-4 shrink-0">
           <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
@@ -338,17 +580,10 @@ export default function Vendas() {
                       }`}
                     >
                       <div className="text-center w-full">
-                        <span className="block text-sm font-bold text-slate-800">
-                          {variante.tamanho}
-                        </span>
-                        <span className="block text-[10px] font-medium text-slate-500 mt-0.5">
-                          {formatBRL(variante.precoVenda)}
-                        </span>
-                        <span className="block text-[9px] text-slate-400 mt-0.5 font-medium">
-                          Estoque: {variante.quantidade}
-                        </span>
+                        <span className="block text-sm font-bold text-slate-800">{variante.tamanho}</span>
+                        <span className="block text-[10px] font-medium text-slate-500 mt-0.5">{formatBRL(variante.precoVenda)}</span>
+                        <span className="block text-[9px] text-slate-400 mt-0.5 font-medium">Estoque: {variante.quantidade}</span>
                       </div>
-
                       {noCarrinho === 0 ? (
                         <button
                           onClick={() => handleAddToCart(variante)}
@@ -358,18 +593,11 @@ export default function Vendas() {
                         </button>
                       ) : (
                         <div className="flex items-center justify-between w-full bg-white rounded-lg p-1 border border-emerald-200 mt-1">
-                          <button
-                            onClick={() => handleRemoveFromCart(variante.id)}
-                            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-red-50 text-red-500 transition-colors"
-                          >
+                          <button onClick={() => handleRemoveFromCart(variante.id)} className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-red-50 text-red-500 transition-colors">
                             <Minus className="w-4 h-4" />
                           </button>
                           <span className="font-bold text-sm text-slate-800">{noCarrinho}</span>
-                          <button
-                            onClick={() => handleAddToCart(variante)}
-                            disabled={noCarrinho >= variante.quantidade}
-                            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-emerald-50 text-emerald-600 transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
-                          >
+                          <button onClick={() => handleAddToCart(variante)} disabled={noCarrinho >= variante.quantidade} className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-emerald-50 text-emerald-600 transition-colors disabled:opacity-30">
                             <Plus className="w-4 h-4" />
                           </button>
                         </div>
@@ -379,12 +607,8 @@ export default function Vendas() {
                 })}
               </div>
             </div>
-
             <div className="px-5 pb-5">
-              <button
-                onClick={() => setSelectedGroup(null)}
-                className="w-full py-3 rounded-xl font-bold text-sm bg-slate-900 hover:bg-slate-800 text-white transition-colors"
-              >
+              <button onClick={() => setSelectedGroup(null)} className="w-full py-3 rounded-xl font-bold text-sm bg-slate-900 hover:bg-slate-800 text-white transition-colors">
                 Fechar
               </button>
             </div>
@@ -392,10 +616,10 @@ export default function Vendas() {
         </div>
       )}
 
-      {/* Direita: Carrinho / PDV Checkout */}
+      {/* Direita: Carrinho */}
       <div className="w-full lg:w-96 flex flex-col bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden shrink-0 z-10 relative">
 
-        {/* Overlay de caixa fechado */}
+        {/* Overlay caixa fechado */}
         {caixaFechado && (
           <div className="absolute inset-0 bg-white/90 backdrop-blur-sm z-40 flex flex-col items-center justify-center p-8 text-center">
             <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
@@ -407,319 +631,205 @@ export default function Vendas() {
           </div>
         )}
 
-        {checkoutStep === 'cart' ? (
-          <>
-            <div className="h-16 flex items-center justify-between px-6 bg-slate-900 text-white shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-500/20 rounded-lg">
-                  <ShoppingCart className="w-5 h-5 text-emerald-400" />
-                </div>
-                <h2 className="font-bold text-lg tracking-tight">Caixa Virtual</h2>
-              </div>
-              {carrinhoItens.length > 0 && (
-                <button onClick={handleClearCart} className="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors flex items-center justify-center" title="Limpar Carrinho">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
+        <div className="h-16 flex items-center justify-between px-6 bg-slate-900 text-white shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-emerald-500/20 rounded-lg">
+              <ShoppingCart className="w-5 h-5 text-emerald-400" />
             </div>
+            <h2 className="font-bold text-lg tracking-tight">Caixa Virtual</h2>
+          </div>
+          {carrinhoItens.length > 0 && (
+            <button onClick={handleClearCart} className="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors" title="Limpar Carrinho">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
 
-            <div className="p-5 border-b border-slate-100 bg-slate-50/50 shrink-0 space-y-3">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Cliente / Aluno (Opcional)</label>
-                <select
-                  value={clienteSelecionado}
-                  onChange={e => setClienteSelecionado(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm transition-colors"
-                >
-                  <option value="">Venda Balcao (Sem Cadastro)</option>
-                  {clientes.map(c => (
-                    <option key={c.id} value={c.id}>{c.nome}</option>
-                  ))}
-                </select>
-              </div>
+        <div className="p-5 border-b border-slate-100 bg-slate-50/50 shrink-0 space-y-3">
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Cliente / Aluno (Opcional)</label>
+            <select
+              value={clienteSelecionado}
+              onChange={e => setClienteSelecionado(e.target.value)}
+              className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm transition-colors"
+            >
+              <option value="">Venda Balcao (Sem Cadastro)</option>
+              {clientes.map(c => (
+                <option key={c.id} value={c.id}>{c.nome}</option>
+              ))}
+            </select>
+          </div>
 
-              {/* Toggle de troca */}
-              <label className="flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all select-none ${isTroca ? 'border-amber-400 bg-amber-50' : 'border-slate-200 bg-white hover:border-slate-300'}">
-                <div className={`relative w-10 h-6 rounded-full transition-colors ${isTroca ? 'bg-amber-500' : 'bg-slate-300'}`}>
-                  <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${isTroca ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
-                </div>
-                <div className="flex items-center gap-2">
-                  <RefreshCw className={`w-4 h-4 ${isTroca ? 'text-amber-600' : 'text-slate-400'}`} />
-                  <span className={`text-sm font-bold ${isTroca ? 'text-amber-700' : 'text-slate-600'}`}>Esta venda e uma troca</span>
-                </div>
-                <input type="checkbox" checked={isTroca} onChange={e => { setIsTroca(e.target.checked); if (!e.target.checked) setItensDevolvidos([]); }} className="sr-only" />
-              </label>
+          {/* Toggle de troca */}
+          <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all select-none ${isTroca ? 'border-amber-400 bg-amber-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+            <div className={`relative w-10 h-6 rounded-full transition-colors ${isTroca ? 'bg-amber-500' : 'bg-slate-300'}`}>
+              <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${isTroca ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
             </div>
-
-            {/* Secao de produtos devolvidos (troca) */}
-            {isTroca && (
-              <div className="p-4 border-b border-amber-200 bg-amber-50/50 shrink-0">
-                <div className="flex items-center gap-2 mb-3">
-                  <ArrowDownLeft className="w-4 h-4 text-amber-600" />
-                  <span className="text-xs font-bold text-amber-700 uppercase tracking-widest">Produtos Devolvidos</span>
-                </div>
-
-                {/* Seletor de produto devolvido */}
-                <div className="flex gap-2 mb-3">
-                  <select
-                    value={produtoDevolvidoId}
-                    onChange={e => setProdutoDevolvidoId(e.target.value)}
-                    className="flex-1 px-2 py-2 bg-white border border-amber-200 rounded-lg text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
-                  >
-                    <option value="">Selecionar produto...</option>
-                    {produtos.map(p => (
-                      <option key={p.id} value={p.id}>{p.nome} ({p.tamanho}) - {formatBRL(p.precoVenda)}</option>
-                    ))}
-                  </select>
-                  <input
-                    type="number"
-                    min={1}
-                    value={qtdDevolvida}
-                    onChange={e => setQtdDevolvida(Math.max(1, Number(e.target.value)))}
-                    className="w-14 px-2 py-2 bg-white border border-amber-200 rounded-lg text-xs font-bold text-center focus:outline-none focus:ring-2 focus:ring-amber-400"
-                  />
-                  <button
-                    onClick={handleAdicionarDevolvido}
-                    disabled={!produtoDevolvidoId}
-                    className="px-3 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg text-xs font-bold transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* Lista de itens devolvidos */}
-                {itensDevolvidos.length > 0 ? (
-                  <div className="space-y-2">
-                    {itensDevolvidos.map(item => (
-                      <div key={item.produtoId} className="flex items-center gap-2 bg-white p-2 rounded-lg border border-amber-200">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-slate-700 truncate">{item.produtoNome}</p>
-                          <p className="text-[10px] text-amber-600 font-bold">{item.quantidade}x {formatBRL(item.precoUnitario)} = {formatBRL(item.valorTotal)}</p>
-                        </div>
-                        <span className="text-[9px] font-black text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">Devolucao</span>
-                        <button onClick={() => handleRemoverDevolvido(item.produtoId)} className="p-1 text-slate-400 hover:text-red-500 transition-colors shrink-0">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                    <div className="text-right text-xs font-bold text-amber-700 pt-1">
-                      Total devolvido: {formatBRL(totalEntrada)}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-xs text-amber-500 text-center py-2">Nenhum produto devolvido adicionado.</p>
-                )}
-              </div>
-            )}
-
-            <div className="flex-1 overflow-y-auto p-4 bg-slate-50/30">
-              {carrinhoItens.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-center text-slate-400 space-y-4 py-12">
-                  <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center">
-                    <ShoppingCart className="w-8 h-8 text-slate-300" />
-                  </div>
-                  <p className="text-sm px-8 font-medium">O carrinho esta vazio.<br/>Selecione produtos na galeria ao lado para adiciona-los.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {isTroca && carrinhoItens.length > 0 && (
-                    <div className="flex items-center gap-2 mb-1">
-                      <ChevronRight className="w-3.5 h-3.5 text-emerald-600" />
-                      <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Novos Produtos</span>
-                    </div>
-                  )}
-                  {carrinhoItens.map(({ produto, qtd }) => (
-                    <div key={produto.id} className="flex gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] animate-in fade-in slide-in-from-right-4">
-                      {produto.imagem ? (
-                        <img src={produto.imagem} className="w-16 h-16 rounded-lg object-cover bg-slate-100 border border-slate-100 shrink-0" />
-                      ) : (
-                        <div className="w-16 h-16 rounded-lg bg-slate-100 border border-slate-100 flex items-center justify-center shrink-0">
-                          <ImageOff className="w-5 h-5 text-slate-300" />
-                        </div>
-                      )}
-
-                      <div className="flex-1 min-w-0 flex flex-col justify-between">
-                        <div>
-                          <p className="text-sm font-bold text-slate-800 leading-tight truncate">{produto.nome}</p>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Tam: {produto.tamanho}</p>
-                        </div>
-                        <div className="flex items-center justify-between mt-2">
-                          <span className="font-bold text-emerald-600 text-sm tracking-tight">{formatBRL(produto.precoVenda * qtd)}</span>
-                          <div className="flex items-center bg-slate-100/80 rounded-lg p-0.5 border border-slate-200">
-                            <button onClick={() => handleRemoveFromCart(produto.id)} className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-white hover:shadow-sm rounded-md transition-all">
-                              <Minus className="w-3 h-3" />
-                            </button>
-                            <span className="w-7 text-center text-xs font-bold text-slate-800 select-none">{qtd}</span>
-                            <button onClick={() => handleAddToCart(produto)} className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-white hover:shadow-sm rounded-md transition-all">
-                              <Plus className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+            <div className="flex items-center gap-2">
+              <RefreshCw className={`w-4 h-4 ${isTroca ? 'text-amber-600' : 'text-slate-400'}`} />
+              <span className={`text-sm font-bold ${isTroca ? 'text-amber-700' : 'text-slate-600'}`}>Esta venda e uma troca</span>
             </div>
+            <input type="checkbox" checked={isTroca} onChange={e => { setIsTroca(e.target.checked); if (!e.target.checked) setItensDevolvidos([]); }} className="sr-only" />
+          </label>
+        </div>
 
-            <div className="p-6 bg-white border-t border-slate-100 shrink-0 shadow-[0_-10px_40px_rgba(0,0,0,0.03)] z-10 relative">
-              {isTroca ? (
-                <div className="mb-5 space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Novos itens</span>
-                    <span className="font-bold text-emerald-600">{formatBRL(totalSaida)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Devolvidos</span>
-                    <span className="font-bold text-amber-600">-{formatBRL(totalEntrada)}</span>
-                  </div>
-                  <div className="flex justify-between items-end pt-2 border-t border-slate-100">
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                        {totalVenda > 0 ? 'Diferenca a Pagar' : totalVenda < 0 ? 'Credito ao Cliente' : 'Troca Direta'}
-                      </p>
-                      <p className="text-sm font-bold text-slate-600">{totalPecas} {totalPecas === 1 ? 'item novo' : 'itens novos'}</p>
-                    </div>
-                    <h2 className={`text-2xl sm:text-3xl font-black tracking-tight ${totalVenda > 0 ? 'text-slate-900' : totalVenda < 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                      {formatBRL(Math.abs(totalVenda))}
-                    </h2>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex justify-between items-end mb-5">
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total a Pagar</p>
-                    <p className="text-sm font-bold text-slate-600">{totalPecas} {totalPecas === 1 ? 'item' : 'itens'}</p>
-                  </div>
-                  <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight truncate">{formatBRL(totalVenda)}</h2>
-                </div>
-              )}
-
-              <button
-                disabled={carrinhoItens.length === 0 || (isTroca && itensDevolvidos.length === 0)}
-                onClick={handleFinalizar}
-                className={`relative w-full flex items-center justify-center gap-2 ${
-                  isTroca
-                    ? 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 shadow-amber-200'
-                    : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 shadow-emerald-200'
-                } disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white px-4 py-4 rounded-xl font-bold text-lg transition-all active:scale-[0.98] shadow-xl disabled:shadow-none overflow-hidden`}
+        {/* Secao de produtos devolvidos (troca) */}
+        {isTroca && (
+          <div className="p-4 border-b border-amber-200 bg-amber-50/50 shrink-0">
+            <div className="flex items-center gap-2 mb-3">
+              <ArrowDownLeft className="w-4 h-4 text-amber-600" />
+              <span className="text-xs font-bold text-amber-700 uppercase tracking-widest">Produtos Devolvidos</span>
+            </div>
+            <div className="flex gap-2 mb-3">
+              <select
+                value={produtoDevolvidoId}
+                onChange={e => setProdutoDevolvidoId(e.target.value)}
+                className="flex-1 px-2 py-2 bg-white border border-amber-200 rounded-lg text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
               >
-                {isTroca ? 'Confirmar Troca' : 'Avancar para Pagamento'} <ChevronRight className="w-6 h-6" />
+                <option value="">Selecionar produto...</option>
+                {produtos.map(p => (
+                  <option key={p.id} value={p.id}>{p.nome} ({p.tamanho}) - {formatBRL(p.precoVenda)}</option>
+                ))}
+              </select>
+              <input
+                type="number"
+                min={1}
+                value={qtdDevolvida}
+                onChange={e => setQtdDevolvida(Math.max(1, Number(e.target.value)))}
+                className="w-14 px-2 py-2 bg-white border border-amber-200 rounded-lg text-xs font-bold text-center focus:outline-none focus:ring-2 focus:ring-amber-400"
+              />
+              <button
+                onClick={handleAdicionarDevolvido}
+                disabled={!produtoDevolvidoId}
+                className="px-3 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg text-xs font-bold transition-colors"
+              >
+                <Plus className="w-4 h-4" />
               </button>
-
-              <div className="text-center mt-5">
-                <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">
-                  Operador de Venda: <span className="text-slate-700">{usuarioAtivo?.nome || 'Nao logado'}</span>
-                </p>
-              </div>
             </div>
-          </>
-        ) : (
-          <div className="absolute inset-0 bg-white z-20 flex flex-col animate-in slide-in-from-right duration-300">
-            <div className={`h-16 flex items-center gap-3 px-6 ${isTroca ? 'bg-amber-600' : 'bg-slate-900'} text-white shrink-0`}>
-              <button onClick={() => setCheckoutStep('cart')} className="p-2 hover:bg-white/20 rounded-full transition-colors -ml-2">
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <h2 className="font-bold text-lg tracking-tight">
-                {isTroca ? 'Finalizar Troca' : 'Pagina de Finalizacao'}
-              </h2>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 bg-slate-50 flex flex-col relative">
-              {vendaSucesso && (
-                <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-30 flex flex-col items-center justify-center p-6 text-center animate-in zoom-in fade-in">
-                  <div className={`w-24 h-24 ${isTroca ? 'bg-amber-100' : 'bg-emerald-100'} rounded-full flex items-center justify-center mb-6 shadow-xl ${isTroca ? 'shadow-amber-200' : 'shadow-emerald-200'}`}>
-                    <CheckCircle2 className={`w-12 h-12 ${isTroca ? 'text-amber-600' : 'text-emerald-600'}`} />
-                  </div>
-                  <h2 className="text-3xl font-black text-slate-900 mb-2">{mensagemSucesso}</h2>
-                  <p className="text-slate-500 font-medium">
-                    {isTroca ? 'A troca foi registrada com sucesso no sistema.' : 'A venda foi registrada com sucesso no sistema.'}
-                  </p>
-                </div>
-              )}
-
-              {/* Metodo de pagamento - mostrar se diferenca > 0 ou se nao e troca */}
-              {(!isTroca || totalVenda > 0) && (
-                <>
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
-                    {isTroca ? 'Pagamento da Diferenca' : 'Escolher a Forma de Pagamento'}
-                  </h3>
-
-                  <div className="grid grid-cols-2 gap-3 mb-8">
-                    <button onClick={() => setMetodoPagamento('PIX')} className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-colors ${metodoPagamento === 'PIX' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-100'}`}>
-                      <span className="font-bold">PIX</span>
-                    </button>
-                    <button onClick={() => setMetodoPagamento('CARTAO')} className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-colors ${metodoPagamento === 'CARTAO' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-100'}`}>
-                      <span className="font-bold">Cartao</span>
-                    </button>
-                    <button onClick={() => setMetodoPagamento('DINHEIRO')} className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-colors col-span-2 ${metodoPagamento === 'DINHEIRO' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-100'}`}>
-                      <span className="font-bold">Dinheiro em Especie</span>
+            {itensDevolvidos.length > 0 ? (
+              <div className="space-y-2">
+                {itensDevolvidos.map(item => (
+                  <div key={item.produtoId} className="flex items-center gap-2 bg-white p-2 rounded-lg border border-amber-200">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-slate-700 truncate">{item.produtoNome}</p>
+                      <p className="text-[10px] text-amber-600 font-bold">{item.quantidade}x {formatBRL(item.precoUnitario)} = {formatBRL(item.valorTotal)}</p>
+                    </div>
+                    <span className="text-[9px] font-black text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">Devolucao</span>
+                    <button onClick={() => handleRemoverDevolvido(item.produtoId)} className="p-1 text-slate-400 hover:text-red-500 transition-colors shrink-0">
+                      <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                </>
-              )}
-
-              {/* Troca direta ou credito - sem pagamento necessario */}
-              {isTroca && totalVenda <= 0 && (
-                <div className={`p-5 rounded-2xl border ${totalVenda === 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'} mb-8`}>
-                  <div className="flex items-center gap-3">
-                    <RefreshCw className={`w-6 h-6 ${totalVenda === 0 ? 'text-emerald-600' : 'text-amber-600'}`} />
-                    <div>
-                      <h3 className={`font-bold ${totalVenda === 0 ? 'text-emerald-800' : 'text-amber-800'}`}>
-                        {totalVenda === 0 ? 'Troca Direta' : 'Credito ao Cliente'}
-                      </h3>
-                      <p className={`text-sm ${totalVenda === 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                        {totalVenda === 0
-                          ? 'Nenhum pagamento necessario.'
-                          : `O cliente tem um credito de ${formatBRL(Math.abs(totalVenda))}.`
-                        }
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className={`p-5 rounded-2xl border ${isTroca ? 'border-amber-200 bg-amber-50/50' : 'border-slate-200 bg-white'} shadow-sm mb-6`}>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-slate-500 font-medium">Resumo do Pedido</span>
-                  <span className="text-slate-900 font-bold">{totalPecas} {totalPecas === 1 ? 'peca' : 'pecas'}</span>
-                </div>
-                {isTroca && (
-                  <>
-                    <div className="flex justify-between items-center text-sm py-1">
-                      <span className="text-slate-500">Novos produtos</span>
-                      <span className="text-emerald-600 font-bold">{formatBRL(totalSaida)}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm py-1">
-                      <span className="text-slate-500">Produtos devolvidos</span>
-                      <span className="text-amber-600 font-bold">-{formatBRL(totalEntrada)}</span>
-                    </div>
-                  </>
-                )}
-                <div className="flex justify-between items-center pt-3 mt-3 border-t border-slate-100">
-                  <span className="text-lg font-bold text-slate-900">
-                    {isTroca ? (totalVenda > 0 ? 'Diferenca a Pagar' : totalVenda < 0 ? 'Credito' : 'Total') : 'Total a Pagar'}
-                  </span>
-                  <span className={`text-2xl font-black ${isTroca && totalVenda <= 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                    {formatBRL(Math.abs(totalVenda))}
-                  </span>
+                ))}
+                <div className="text-right text-xs font-bold text-amber-700 pt-1">
+                  Total devolvido: {formatBRL(totalEntrada)}
                 </div>
               </div>
-
-              <div className="mt-auto pt-6">
-                <button
-                  onClick={handleConfirmarPagamento}
-                  className={`w-full py-4 rounded-xl font-black text-xl ${
-                    isTroca ? 'bg-amber-600 hover:bg-amber-700' : 'bg-slate-900 hover:bg-slate-800'
-                  } text-white shadow-xl transition-all flex items-center justify-center gap-2`}
-                >
-                  <CheckCircle2 className="w-5 h-5"/>
-                  {isTroca ? 'Confirmar Troca' : 'Confirmar Recebimento'}
-                </button>
-              </div>
-            </div>
+            ) : (
+              <p className="text-xs text-amber-500 text-center py-2">Nenhum produto devolvido adicionado.</p>
+            )}
           </div>
         )}
+
+        <div className="flex-1 overflow-y-auto p-4 bg-slate-50/30">
+          {carrinhoItens.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-center text-slate-400 space-y-4 py-12">
+              <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center">
+                <ShoppingCart className="w-8 h-8 text-slate-300" />
+              </div>
+              <p className="text-sm px-8 font-medium">O carrinho esta vazio.<br/>Selecione produtos na galeria ao lado para adiciona-los.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {isTroca && (
+                <div className="flex items-center gap-2 mb-1">
+                  <ChevronRight className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Novos Produtos</span>
+                </div>
+              )}
+              {carrinhoItens.map(({ produto, qtd }) => (
+                <div key={produto.id} className="flex gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+                  {produto.imagem ? (
+                    <img src={produto.imagem} className="w-16 h-16 rounded-lg object-cover bg-slate-100 border border-slate-100 shrink-0" />
+                  ) : (
+                    <div className="w-16 h-16 rounded-lg bg-slate-100 border border-slate-100 flex items-center justify-center shrink-0">
+                      <ImageOff className="w-5 h-5 text-slate-300" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0 flex flex-col justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-slate-800 leading-tight truncate">{produto.nome}</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Tam: {produto.tamanho}</p>
+                    </div>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="font-bold text-emerald-600 text-sm tracking-tight">{formatBRL(produto.precoVenda * qtd)}</span>
+                      <div className="flex items-center bg-slate-100/80 rounded-lg p-0.5 border border-slate-200">
+                        <button onClick={() => handleRemoveFromCart(produto.id)} className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-white hover:shadow-sm rounded-md transition-all">
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="w-7 text-center text-xs font-bold text-slate-800 select-none">{qtd}</span>
+                        <button onClick={() => handleAddToCart(produto)} className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-white hover:shadow-sm rounded-md transition-all">
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="p-6 bg-white border-t border-slate-100 shrink-0 shadow-[0_-10px_40px_rgba(0,0,0,0.03)] z-10 relative">
+          {isTroca ? (
+            <div className="mb-5 space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Novos itens</span>
+                <span className="font-bold text-emerald-600">{formatBRL(totalSaida)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Devolvidos</span>
+                <span className="font-bold text-amber-600">-{formatBRL(totalEntrada)}</span>
+              </div>
+              <div className="flex justify-between items-end pt-2 border-t border-slate-100">
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                    {totalVenda > 0 ? 'Diferenca a Pagar' : totalVenda < 0 ? 'Credito ao Cliente' : 'Troca Direta'}
+                  </p>
+                  <p className="text-sm font-bold text-slate-600">{totalPecas} {totalPecas === 1 ? 'item novo' : 'itens novos'}</p>
+                </div>
+                <h2 className={`text-2xl sm:text-3xl font-black tracking-tight ${totalVenda > 0 ? 'text-slate-900' : totalVenda < 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                  {formatBRL(Math.abs(totalVenda))}
+                </h2>
+              </div>
+            </div>
+          ) : (
+            <div className="flex justify-between items-end mb-5">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total a Pagar</p>
+                <p className="text-sm font-bold text-slate-600">{totalPecas} {totalPecas === 1 ? 'item' : 'itens'}</p>
+              </div>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight truncate">{formatBRL(totalVenda)}</h2>
+            </div>
+          )}
+
+          <button
+            disabled={carrinhoItens.length === 0 || (isTroca && itensDevolvidos.length === 0)}
+            onClick={handleFinalizar}
+            className={`relative w-full flex items-center justify-center gap-2 ${
+              isTroca
+                ? 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 shadow-amber-200'
+                : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 shadow-emerald-200'
+            } disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white px-4 py-4 rounded-xl font-bold text-lg transition-all active:scale-[0.98] shadow-xl disabled:shadow-none overflow-hidden`}
+          >
+            {isTroca ? 'Confirmar Troca' : 'Avancar para Pagamento'} <ChevronRight className="w-6 h-6" />
+          </button>
+
+          <div className="text-center mt-5">
+            <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">
+              Operador de Venda: <span className="text-slate-700">{usuarioAtivo?.nome || 'Nao logado'}</span>
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
