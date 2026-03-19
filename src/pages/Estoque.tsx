@@ -141,40 +141,38 @@ export default function Estoque() {
 }
 
 function ProdutoModal({ produto, onClose }: { produto: Produto | null, onClose: () => void }) {
-  const { addProduto, updateProduto, tamanhosCustom, addTamanhoCustom } = useStore();
+  const { addProduto, updateProduto, tamanhosCustom, addTamanhoCustom, produtos } = useStore();
   const [novoTamanho, setNovoTamanho] = useState('');
   const isEditing = !!produto;
 
   const todosOsTamanhos: string[] = [...TAMANHOS_PADRAO, ...tamanhosCustom];
 
-  // No modo criação: múltiplos tamanhos. No modo edição: tamanho único.
   const [tamanhosSelecionados, setTamanhosSelecionados] = useState<string[]>(
     produto ? [produto.tamanho] : []
   );
-  const [quantidadesPorTamanho, setQuantidadesPorTamanho] = useState<Record<string, number>>({});
+  
+  const [quantidadesPorTamanho, setQuantidadesPorTamanho] = useState<Record<string, number>>(
+    produto ? { [produto.tamanho]: produto.quantidade } : {}
+  );
 
   const [formData, setFormData] = useState({
     nome: produto?.nome || '',
     categoria: produto?.categoria || 'Camiseta',
     cor: produto?.cor || '',
-    quantidade: produto?.quantidade || 0,
     precoCusto: produto?.precoCusto || 0,
     precoVenda: produto?.precoVenda || 0,
     imagem: produto?.imagem || '',
   });
 
   const toggleTamanho = (t: string) => {
-    if (isEditing) {
-      setTamanhosSelecionados([t]);
-      return;
-    }
     setTamanhosSelecionados(prev => {
       if (prev.includes(t)) {
         const next = prev.filter(x => x !== t);
         setQuantidadesPorTamanho(q => { const { [t]: _, ...rest } = q; return rest; });
         return next;
       } else {
-        setQuantidadesPorTamanho(q => ({ ...q, [t]: 0 }));
+        const existente = produtos.find(p => p.nome === formData.nome && p.categoria === formData.categoria && p.cor === formData.cor && p.tamanho === t);
+        setQuantidadesPorTamanho(q => ({ ...q, [t]: existente ? existente.quantidade : 0 }));
         return [...prev, t];
       }
     });
@@ -198,7 +196,23 @@ function ProdutoModal({ produto, onClose }: { produto: Produto | null, onClose: 
     if (tamanhosSelecionados.length === 0) return;
 
     if (isEditing) {
-      updateProduto(produto!.id, { ...formData, tamanho: tamanhosSelecionados[0] } as any);
+      const tamanhoOriginal = produto!.tamanho;
+      const tamanhoPrincipal = tamanhosSelecionados.includes(tamanhoOriginal) ? tamanhoOriginal : tamanhosSelecionados[0];
+
+      updateProduto(produto!.id, { 
+        ...formData, 
+        tamanho: tamanhoPrincipal,
+        quantidade: quantidadesPorTamanho[tamanhoPrincipal] || 0
+      } as any);
+
+      tamanhosSelecionados.filter(t => t !== tamanhoPrincipal).forEach(tam => {
+        const existente = produtos.find(p => p.nome === formData.nome && p.categoria === formData.categoria && p.cor === formData.cor && p.tamanho === tam && p.id !== produto!.id);
+        if (existente) {
+           updateProduto(existente.id, { ...formData, tamanho: tam, quantidade: quantidadesPorTamanho[tam] || 0 } as any);
+        } else {
+           addProduto({ ...formData, tamanho: tam, quantidade: quantidadesPorTamanho[tam] || 0 } as any);
+        }
+      });
     } else {
       tamanhosSelecionados.forEach(tam => {
         addProduto({ ...formData, tamanho: tam, quantidade: quantidadesPorTamanho[tam] || 0 } as any);
@@ -248,14 +262,12 @@ function ProdutoModal({ produto, onClose }: { produto: Produto | null, onClose: 
 
           <div>
             <label className="block text-sm font-medium mb-1.5">
-              {isEditing ? 'Tamanho' : 'Tamanhos'}{' '}
-              {!isEditing && tamanhosSelecionados.length > 0 && (
-                <span className="text-violet-600">({tamanhosSelecionados.length} selecionado{tamanhosSelecionados.length > 1 ? 's' : ''})</span>
+              Tamanhos
+              {tamanhosSelecionados.length > 0 && (
+                <span className="text-violet-600"> ({tamanhosSelecionados.length} selecionado{tamanhosSelecionados.length > 1 ? 's' : ''})</span>
               )}
             </label>
-            {!isEditing && (
-              <p className="text-xs text-slate-400 mb-2">Selecione os tamanhos que deseja cadastrar. Sera criada uma entrada para cada tamanho.</p>
-            )}
+            <p className="text-xs text-slate-400 mb-2">Selecione os tamanhos associados. Você pode adicionar ou remover tamanhos.</p>
             <div className="flex flex-wrap gap-1.5">
               {todosOsTamanhos.map(t => {
                 const selected = tamanhosSelecionados.includes(t);
@@ -293,7 +305,7 @@ function ProdutoModal({ produto, onClose }: { produto: Produto | null, onClose: 
               </button>
             </div>
 
-            {!isEditing && tamanhosSelecionados.length > 0 && (
+            {tamanhosSelecionados.length > 0 && (
               <div className="mt-4 p-4 bg-violet-50/50 border border-violet-100 rounded-xl">
                 <label className="block text-sm font-bold text-violet-800 mb-3">Definir Estoque para cada Tamanho</label>
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
@@ -312,32 +324,6 @@ function ProdutoModal({ produto, onClose }: { produto: Produto | null, onClose: 
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Cor Predominante</label>
-              <input
-                required
-                type="text"
-                value={formData.cor}
-                onChange={e => setFormData({...formData, cor: e.target.value})}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
-              />
-            </div>
-            {isEditing && (
-              <div>
-                <label className="block text-sm font-medium mb-1.5">Quantidade em Estoque</label>
-                <input
-                  required
-                  type="number"
-                  min="0"
-                  value={formData.quantidade}
-                  onChange={e => setFormData({...formData, quantidade: Number(e.target.value)})}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
-                />
               </div>
             )}
           </div>
