@@ -151,6 +151,7 @@ function ProdutoModal({ produto, onClose }: { produto: Produto | null, onClose: 
   const [tamanhosSelecionados, setTamanhosSelecionados] = useState<string[]>(
     produto ? [produto.tamanho] : []
   );
+  const [quantidadesPorTamanho, setQuantidadesPorTamanho] = useState<Record<string, number>>({});
 
   const [formData, setFormData] = useState({
     nome: produto?.nome || '',
@@ -167,9 +168,16 @@ function ProdutoModal({ produto, onClose }: { produto: Produto | null, onClose: 
       setTamanhosSelecionados([t]);
       return;
     }
-    setTamanhosSelecionados(prev =>
-      prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]
-    );
+    setTamanhosSelecionados(prev => {
+      if (prev.includes(t)) {
+        const next = prev.filter(x => x !== t);
+        setQuantidadesPorTamanho(q => { const { [t]: _, ...rest } = q; return rest; });
+        return next;
+      } else {
+        setQuantidadesPorTamanho(q => ({ ...q, [t]: 0 }));
+        return [...prev, t];
+      }
+    });
   };
 
   const handleAddTamanho = () => {
@@ -180,6 +188,7 @@ function ProdutoModal({ produto, onClose }: { produto: Produto | null, onClose: 
     }
     if (!tamanhosSelecionados.includes(t)) {
       setTamanhosSelecionados(prev => [...prev, t]);
+      setQuantidadesPorTamanho(q => ({ ...q, [t]: 0 }));
     }
     setNovoTamanho('');
   };
@@ -192,7 +201,7 @@ function ProdutoModal({ produto, onClose }: { produto: Produto | null, onClose: 
       updateProduto(produto!.id, { ...formData, tamanho: tamanhosSelecionados[0] } as any);
     } else {
       tamanhosSelecionados.forEach(tam => {
-        addProduto({ ...formData, tamanho: tam } as any);
+        addProduto({ ...formData, tamanho: tam, quantidade: quantidadesPorTamanho[tam] || 0 } as any);
       });
     }
     onClose();
@@ -283,6 +292,28 @@ function ProdutoModal({ produto, onClose }: { produto: Produto | null, onClose: 
                 + Criar
               </button>
             </div>
+
+            {!isEditing && tamanhosSelecionados.length > 0 && (
+              <div className="mt-4 p-4 bg-violet-50/50 border border-violet-100 rounded-xl">
+                <label className="block text-sm font-bold text-violet-800 mb-3">Definir Estoque para cada Tamanho</label>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                  {tamanhosSelecionados.map(t => (
+                    <div key={t} className="flex flex-col bg-white p-2 rounded-lg border border-violet-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 text-center">TAMANHO {t}</span>
+                      <input 
+                        type="number" 
+                        min="0"
+                        required
+                        value={quantidadesPorTamanho[t] === undefined ? '' : quantidadesPorTamanho[t]}
+                        onChange={e => setQuantidadesPorTamanho(q => ({...q, [t]: Number(e.target.value)}))}
+                        className="w-full text-center px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm font-bold text-slate-700"
+                        placeholder="Qtd."
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -296,17 +327,19 @@ function ProdutoModal({ produto, onClose }: { produto: Produto | null, onClose: 
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Quantidade {!isEditing && 'por Tamanho'}</label>
-              <input
-                required
-                type="number"
-                min="0"
-                value={formData.quantidade}
-                onChange={e => setFormData({...formData, quantidade: Number(e.target.value)})}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
-              />
-            </div>
+            {isEditing && (
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Quantidade em Estoque</label>
+                <input
+                  required
+                  type="number"
+                  min="0"
+                  value={formData.quantidade}
+                  onChange={e => setFormData({...formData, quantidade: Number(e.target.value)})}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
+                />
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
