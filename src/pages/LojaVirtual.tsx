@@ -30,8 +30,10 @@ export default function LojaVirtual() {
   const produtoGroups = useMemo(() => {
     const groups = new Map<string, Produto[]>();
     produtos.forEach(p => {
-      if (!groups.has(p.nome)) groups.set(p.nome, []);
-      groups.get(p.nome)!.push(p);
+      if (p.quantidade > 0) {
+        if (!groups.has(p.nome)) groups.set(p.nome, []);
+        groups.get(p.nome)!.push(p);
+      }
     });
     return Array.from(groups.entries()).map(([nome, variantes]): ProdutoGroup => ({
       nome,
