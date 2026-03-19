@@ -52,38 +52,38 @@ export default function Financeiro() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-100">
           <div className="flex justify-between items-center mb-4">
-            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
               <TrendingUp className="w-5 h-5" />
             </div>
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 truncate ml-2">
               Receitas (Mês)
             </span>
           </div>
           <div className="min-w-0">
             <p className="text-sm font-medium text-slate-500 mb-1 truncate">Total Entradas</p>
-            <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight truncate">{formatBRL(receitasMes)}</h3>
+            <h3 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 tracking-tight truncate">{formatBRL(receitasMes)}</h3>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-100">
           <div className="flex justify-between items-center mb-4">
-            <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-600">
+            <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 shrink-0">
               <TrendingDown className="w-5 h-5" />
             </div>
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-100">
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-100 truncate ml-2">
               Despesas (Mês)
             </span>
           </div>
           <div className="min-w-0">
             <p className="text-sm font-medium text-slate-500 mb-1 truncate">Total Saídas</p>
-            <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight truncate">{formatBRL(totalDespesasMes)}</h3>
+            <h3 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 tracking-tight truncate">{formatBRL(totalDespesasMes)}</h3>
           </div>
         </div>
 
-        <div className={`p-6 rounded-2xl shadow-sm border relative overflow-hidden ${saldoLiquido >= 0 ? 'bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700' : 'bg-gradient-to-br from-rose-900 to-rose-800 border-rose-700'}`}>
+        <div className={`sm:col-span-2 lg:col-span-1 p-5 sm:p-6 rounded-2xl shadow-sm border relative overflow-hidden ${saldoLiquido >= 0 ? 'bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700' : 'bg-gradient-to-br from-rose-900 to-rose-800 border-rose-700'}`}>
           <div className="absolute top-0 right-0 p-4 opacity-20">
             <DollarSign className="w-24 h-24 text-white" />
           </div>
@@ -95,7 +95,7 @@ export default function Financeiro() {
             </div>
             <div className="min-w-0">
               <p className="text-sm font-medium text-white/70 mb-1 truncate">Resultado no Período</p>
-              <h3 className="text-2xl sm:text-3xl font-black text-white tracking-tight truncate">{formatBRL(saldoLiquido)}</h3>
+              <h3 className="text-xl sm:text-2xl lg:text-3xl font-black text-white tracking-tight truncate">{formatBRL(saldoLiquido)}</h3>
             </div>
           </div>
         </div>

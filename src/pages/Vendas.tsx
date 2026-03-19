@@ -257,7 +257,7 @@ export default function Vendas() {
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total a Pagar</p>
                   <p className="text-sm font-bold text-slate-600">{totalPecas} {totalPecas === 1 ? 'item' : 'itens'}</p>
                 </div>
-                <h2 className="text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">{formatBRL(totalVenda)}</h2>
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight truncate">{formatBRL(totalVenda)}</h2>
               </div>
               
               <button 

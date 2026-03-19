@@ -43,57 +43,57 @@ export default function Dashboard() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center relative overflow-hidden group">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
+        <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center relative overflow-hidden group">
           <div className="absolute right-0 top-0 w-24 h-24 bg-violet-50 rounded-bl-full -z-10 transition-transform group-hover:scale-110"></div>
-          <div className="flex items-center gap-4 w-full min-w-0">
-            <div className="p-3 bg-violet-100 text-violet-600 rounded-xl">
+          <div className="flex items-center gap-3 sm:gap-4 w-full min-w-0">
+            <div className="p-3 bg-violet-100 text-violet-600 rounded-xl shrink-0">
               <TrendingUp className="w-6 h-6" />
             </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-500 mb-1 truncate">Faturamento Mensal</p>
-              <h3 className="text-xl sm:text-2xl font-bold text-slate-900 truncate">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-slate-500 mb-1 truncate">Faturamento Mensal</p>
+              <h3 className="text-lg sm:text-xl xl:text-2xl font-bold text-slate-900 truncate">
                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalArrecadadoMes)}
               </h3>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center relative overflow-hidden group">
+        <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center relative overflow-hidden group">
           <div className="absolute right-0 top-0 w-24 h-24 bg-blue-50 rounded-bl-full -z-10 transition-transform group-hover:scale-110"></div>
-          <div className="flex items-center gap-4 w-full min-w-0">
-            <div className="p-3 bg-blue-100 text-blue-600 rounded-xl">
+          <div className="flex items-center gap-3 sm:gap-4 w-full min-w-0">
+            <div className="p-3 bg-blue-100 text-blue-600 rounded-xl shrink-0">
               <ShoppingBag className="w-6 h-6" />
             </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-500 mb-1 truncate">Uniformes Vendidos</p>
-              <h3 className="text-xl sm:text-2xl font-bold text-slate-900 truncate">{uniformesVendidosMes} un</h3>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-slate-500 mb-1 truncate">Uniformes Vendidos</p>
+              <h3 className="text-lg sm:text-xl xl:text-2xl font-bold text-slate-900 truncate">{uniformesVendidosMes} un</h3>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center relative overflow-hidden group">
+        <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center relative overflow-hidden group">
           <div className="absolute right-0 top-0 w-24 h-24 bg-emerald-50 rounded-bl-full -z-10 transition-transform group-hover:scale-110"></div>
-          <div className="flex items-center gap-4 w-full min-w-0">
-            <div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl">
+          <div className="flex items-center gap-3 sm:gap-4 w-full min-w-0">
+            <div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl shrink-0">
               <Package className="w-6 h-6" />
             </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-500 mb-1 truncate">Total em Estoque</p>
-              <h3 className="text-xl sm:text-2xl font-bold text-slate-900 truncate">{totalEstoque} un</h3>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-slate-500 mb-1 truncate">Total em Estoque</p>
+              <h3 className="text-lg sm:text-xl xl:text-2xl font-bold text-slate-900 truncate">{totalEstoque} un</h3>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center relative overflow-hidden group">
+        <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center relative overflow-hidden group">
           <div className="absolute right-0 top-0 w-24 h-24 bg-amber-50 rounded-bl-full -z-10 transition-transform group-hover:scale-110"></div>
-          <div className="flex items-center gap-4 w-full min-w-0">
-            <div className="p-3 bg-amber-100 text-amber-600 rounded-xl">
+          <div className="flex items-center gap-3 sm:gap-4 w-full min-w-0">
+            <div className="p-3 bg-amber-100 text-amber-600 rounded-xl shrink-0">
               <AlertTriangle className="w-6 h-6" />
             </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-500 mb-1 truncate">Estoque Crítico</p>
-              <h3 className="text-xl sm:text-2xl font-bold text-slate-900 truncate">{estoqueBaixo.length} itens</h3>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-slate-500 mb-1 truncate">Estoque Crítico</p>
+              <h3 className="text-lg sm:text-xl xl:text-2xl font-bold text-slate-900 truncate">{estoqueBaixo.length} itens</h3>
             </div>
           </div>
         </div>
