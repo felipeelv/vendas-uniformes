@@ -13,7 +13,7 @@ interface ProdutoGroup {
 }
 
 export default function LojaVirtual() {
-  const { produtos, clientes, addCliente, registrarSaida } = useStore();
+  const { produtos, clientes, addCliente, registrarVenda } = useStore();
   const [carrinho, setCarrinho] = useState<Record<string, number>>({});
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 
@@ -103,9 +103,12 @@ export default function LojaVirtual() {
       clienteId = novoCli?.id || '';
     }
 
-    for (const item of carrinhoItens) {
-      await registrarSaida(item.produto.id, item.qtd, item.produto.precoVenda * item.qtd, clienteId, formData.nome);
-    }
+    const itens = carrinhoItens.map(({ produto, qtd }) => ({
+      produtoId: produto.id,
+      quantidade: qtd,
+      valorTotal: produto.precoVenda * qtd,
+    }));
+    registrarVenda(itens, 'PIX', clienteId, formData.nome);
 
     setView('success');
     setCarrinho({});

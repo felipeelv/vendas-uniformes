@@ -37,6 +37,8 @@ CREATE TABLE clientes (
 -- Tabela de Vendas
 CREATE TABLE vendas (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  tipo_venda TEXT NOT NULL DEFAULT 'venda' CHECK (tipo_venda IN ('venda', 'troca')),
+  metodo_pagamento TEXT NOT NULL DEFAULT 'DINHEIRO' CHECK (metodo_pagamento IN ('PIX', 'CARTAO', 'DINHEIRO')),
   produto_id UUID REFERENCES produtos(id) ON DELETE SET NULL,
   produto_nome TEXT NOT NULL,
   quantidade INTEGER NOT NULL,
@@ -46,6 +48,37 @@ CREATE TABLE vendas (
   vendedor_nome TEXT NOT NULL,
   cliente_id UUID REFERENCES clientes(id) ON DELETE SET NULL,
   cliente_nome TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Tabela de Itens da Venda (detalhamento por produto)
+CREATE TABLE venda_itens (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  venda_id UUID NOT NULL REFERENCES vendas(id) ON DELETE CASCADE,
+  tipo_item TEXT NOT NULL CHECK (tipo_item IN ('saida', 'entrada')),
+  produto_id UUID REFERENCES produtos(id) ON DELETE SET NULL,
+  produto_nome TEXT NOT NULL,
+  quantidade INTEGER NOT NULL,
+  preco_unitario NUMERIC(10,2) NOT NULL,
+  valor_total NUMERIC(10,2) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Tabela de Fechamentos de Caixa
+CREATE TABLE fechamentos_caixa (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  data DATE NOT NULL UNIQUE,
+  data_fechamento TIMESTAMPTZ NOT NULL DEFAULT now(),
+  operador_id UUID REFERENCES usuarios(id) ON DELETE SET NULL,
+  operador_nome TEXT NOT NULL,
+  total_vendas NUMERIC(10,2) NOT NULL DEFAULT 0,
+  total_trocas NUMERIC(10,2) NOT NULL DEFAULT 0,
+  quantidade_vendas INTEGER NOT NULL DEFAULT 0,
+  quantidade_trocas INTEGER NOT NULL DEFAULT 0,
+  total_pix NUMERIC(10,2) NOT NULL DEFAULT 0,
+  total_cartao NUMERIC(10,2) NOT NULL DEFAULT 0,
+  total_dinheiro NUMERIC(10,2) NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'fechado' CHECK (status IN ('fechado', 'reaberto')),
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -74,6 +107,8 @@ ALTER TABLE usuarios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE produtos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clientes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vendas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE venda_itens ENABLE ROW LEVEL SECURITY;
+ALTER TABLE fechamentos_caixa ENABLE ROW LEVEL SECURITY;
 ALTER TABLE despesas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tamanhos_custom ENABLE ROW LEVEL SECURITY;
 
@@ -84,6 +119,8 @@ CREATE POLICY "Acesso total usuarios" ON usuarios FOR ALL USING (true) WITH CHEC
 CREATE POLICY "Acesso total produtos" ON produtos FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Acesso total clientes" ON clientes FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Acesso total vendas" ON vendas FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Acesso total venda_itens" ON venda_itens FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Acesso total fechamentos_caixa" ON fechamentos_caixa FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Acesso total despesas" ON despesas FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Acesso total tamanhos_custom" ON tamanhos_custom FOR ALL USING (true) WITH CHECK (true);
 

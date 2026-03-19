@@ -153,13 +153,19 @@ export default function Dashboard() {
                 {vendas.slice().reverse().slice(0, 5).map(v => (
                   <li key={v.id} className="p-4 sm:px-6 hover:bg-slate-50/50 transition-colors flex justify-between items-center">
                     <div>
-                      <p className="text-sm font-medium text-slate-900 leading-tight">{v.produtoNome}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-slate-900 leading-tight">{v.produtoNome}</p>
+                        {v.tipoVenda === 'troca' && (
+                          <span className="text-[9px] font-black text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded-full uppercase tracking-wider">Troca</span>
+                        )}
+                      </div>
                       <p className="text-xs text-slate-500 mt-0.5">
-                        {new Date(v.data).toLocaleDateString('pt-BR')} • {v.quantidade} un. vendida(s)
+                        {new Date(v.data).toLocaleDateString('pt-BR')} • {v.quantidade} un. {v.tipoVenda === 'troca' ? 'trocada(s)' : 'vendida(s)'}
+                        {v.metodoPagamento && <span className="ml-1 text-slate-400">• {v.metodoPagamento === 'PIX' ? 'PIX' : v.metodoPagamento === 'CARTAO' ? 'Cartao' : 'Dinheiro'}</span>}
                       </p>
                     </div>
-                    <div className="text-right font-medium text-emerald-600">
-                      +{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v.valorTotal)}
+                    <div className={`text-right font-medium ${v.tipoVenda === 'troca' ? 'text-amber-600' : 'text-emerald-600'}`}>
+                      {v.valorTotal >= 0 ? '+' : ''}{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v.valorTotal)}
                     </div>
                   </li>
                 ))}

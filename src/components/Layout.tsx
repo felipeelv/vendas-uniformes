@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { TrendingUp, LayoutDashboard, ShoppingCart, LogOut, PackageSearch, PieChart, Menu, X, Users, LineChart, UsersRound } from 'lucide-react';
+import { TrendingUp, LayoutDashboard, ShoppingCart, LogOut, PackageSearch, PieChart, Menu, X, Users, LineChart, UsersRound, Lock } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
 const sidebarLinks = [
@@ -11,6 +11,7 @@ const sidebarLinks = [
   { path: '/estoque', icon: PackageSearch, label: 'Estoque de Loja' },
   { path: '/financeiro', icon: PieChart, label: 'Financeiro' },
   { path: '/relatorios', icon: LineChart, label: 'Desempenho & Relatórios' },
+  { path: '/fechamento', icon: Lock, label: 'Fechamento de Caixa' },
 ];
 
 export default function Layout() {

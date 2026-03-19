@@ -118,8 +118,22 @@ export default function Financeiro() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {/* Combine vendas and despesas, sort by date descending */}
-              {[...vendas.map(v => ({ type: 'entrada', date: new Date(v.data), desc: `Venda: ${v.produtoNome} (${v.quantidade} un)`, val: v.valorTotal })),
-                ...despesas.map(d => ({ type: 'saida', date: new Date(d.data), desc: `${d.categoria}: ${d.descricao}`, val: d.valor }))]
+              {[...vendas.map(v => ({
+                  type: 'entrada' as const,
+                  tipoVenda: v.tipoVenda || 'venda',
+                  metodoPagamento: v.metodoPagamento || 'DINHEIRO',
+                  date: new Date(v.data),
+                  desc: `${v.tipoVenda === 'troca' ? 'Troca' : 'Venda'}: ${v.produtoNome} (${v.quantidade} un)`,
+                  val: v.valorTotal
+                })),
+                ...despesas.map(d => ({
+                  type: 'saida' as const,
+                  tipoVenda: '' as string,
+                  metodoPagamento: '' as string,
+                  date: new Date(d.data),
+                  desc: `${d.categoria}: ${d.descricao}`,
+                  val: d.valor
+                }))]
                 .sort((a, b) => b.date.getTime() - a.date.getTime())
                 .slice(0, 15)
                 .map((mov, i) => (
@@ -129,15 +143,24 @@ export default function Financeiro() {
                   </td>
                   <td className="px-6 py-4 text-slate-800">
                     {mov.desc}
+                    {mov.metodoPagamento && (
+                      <span className="ml-2 text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                        {mov.metodoPagamento === 'PIX' ? 'PIX' : mov.metodoPagamento === 'CARTAO' ? 'Cartao' : 'Dinheiro'}
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     {mov.type === 'entrada' ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700">Entrada</span>
+                      mov.tipoVenda === 'troca' ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700">Troca</span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700">Entrada</span>
+                      )
                     ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-rose-100 text-rose-700">Saída</span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-rose-100 text-rose-700">Saida</span>
                     )}
                   </td>
-                  <td className={`px-6 py-4 text-right font-bold ${mov.type === 'entrada' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  <td className={`px-6 py-4 text-right font-bold ${mov.type === 'entrada' ? (mov.tipoVenda === 'troca' ? 'text-amber-600' : 'text-emerald-600') : 'text-rose-600'}`}>
                     {mov.type === 'entrada' ? '+' : '-'}{formatBRL(mov.val)}
                   </td>
                 </tr>

@@ -1,10 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Variáveis de ambiente do Supabase não configuradas. Verifique o arquivo .env');
+export const supabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
+
+if (!supabaseConfigured) {
+  console.warn('⚠️ Variáveis de ambiente do Supabase não configuradas. O sistema funcionará com dados locais (mock).');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = supabaseConfigured
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null;
