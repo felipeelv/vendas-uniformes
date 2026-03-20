@@ -4,7 +4,9 @@ import type { Produto } from '../store/useStore';
 import { ShoppingCart, Plus, Minus, Search, CheckCircle2, ChevronRight, ChevronLeft, ImageOff, Trash2, X, RefreshCw, ArrowDownLeft, Lock, QrCode, CreditCard, Banknote, Package } from 'lucide-react';
 
 interface ProdutoGroup {
+  key: string;
   nome: string;
+  cor: string;
   categoria: string;
   imagem?: string;
   variantes: Produto[];
@@ -48,12 +50,15 @@ export default function Vendas() {
     const groups = new Map<string, Produto[]>();
     produtos.forEach(p => {
       if (p.quantidade > 0) {
-        if (!groups.has(p.nome)) groups.set(p.nome, []);
-        groups.get(p.nome)!.push(p);
+        const key = `${p.nome}|${p.cor}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(p);
       }
     });
-    return Array.from(groups.entries()).map(([nome, variantes]): ProdutoGroup => ({
-      nome,
+    return Array.from(groups.entries()).map(([key, variantes]): ProdutoGroup => ({
+      key,
+      nome: variantes[0].nome,
+      cor: variantes[0].cor,
       categoria: variantes[0].categoria,
       imagem: variantes.find(v => v.imagem)?.imagem,
       variantes,
@@ -63,7 +68,8 @@ export default function Vendas() {
   }, [produtos]);
 
   const filteredGroups = produtoGroups.filter(g => {
-    const matchesSearch = g.nome.toLowerCase().includes(searchTerm.toLowerCase());
+    const displayName = g.cor ? `${g.nome} - ${g.cor}` : g.nome;
+    const matchesSearch = displayName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCat = categoriaFilter === 'Todas' || g.categoria === categoriaFilter;
     return matchesSearch && matchesCat;
   });
@@ -202,7 +208,7 @@ export default function Vendas() {
     return group.variantes.reduce((acc, v) => acc + (carrinho[v.id] || 0), 0);
   };
 
-  const activeGroup = selectedGroup ? produtoGroups.find(g => g.nome === selectedGroup) : null;
+  const activeGroup = selectedGroup ? produtoGroups.find(g => g.key === selectedGroup) : null;
 
   // ==========================================
   // TELA DE CHECKOUT FULLSCREEN (estilo ML)
@@ -494,8 +500,8 @@ export default function Vendas() {
               const groupCartCount = getGroupCartCount(group);
               return (
                 <div
-                  key={group.nome}
-                  onClick={() => setSelectedGroup(group.nome)}
+                  key={group.key}
+                  onClick={() => setSelectedGroup(group.key)}
                   className={`group bg-white rounded-xl border ${todasEsgotadas ? 'border-red-100 opacity-60' : 'border-slate-200 hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-100/50'} overflow-hidden cursor-pointer transition-all duration-300 flex flex-col relative`}
                 >
                   <div className="aspect-[4/5] bg-slate-100 relative overflow-hidden flex items-center justify-center">
@@ -520,7 +526,7 @@ export default function Vendas() {
 
                   <div className="p-4 flex-1 flex flex-col bg-white z-10">
                     <p className="text-[10px] font-bold text-slate-400 mb-1 tracking-widest uppercase truncate">{group.categoria}</p>
-                    <h3 className="text-sm font-bold text-slate-800 leading-tight mb-2 line-clamp-2 flex-1">{group.nome}</h3>
+                    <h3 className="text-sm font-bold text-slate-800 leading-tight mb-2 line-clamp-2 flex-1">{group.cor ? `${group.nome} - ${group.cor}` : group.nome}</h3>
 
                     <div className="flex items-end justify-between mt-2 pt-2 border-t border-slate-100">
                       <div className="min-w-0">
@@ -566,7 +572,7 @@ export default function Vendas() {
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{activeGroup.categoria}</p>
-                <h3 className="text-lg font-bold text-slate-900 leading-tight">{activeGroup.nome}</h3>
+                <h3 className="text-lg font-bold text-slate-900 leading-tight">{activeGroup.cor ? `${activeGroup.nome} - ${activeGroup.cor}` : activeGroup.nome}</h3>
               </div>
               <button onClick={() => setSelectedGroup(null)} className="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition-colors self-start shrink-0">
                 <X className="w-5 h-5" />
