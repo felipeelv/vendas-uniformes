@@ -5,6 +5,7 @@ import { useState } from 'react';
 interface SizeModalProps {
   group: {
     nome: string;
+    cor: string;
     categoria: string;
     imagem?: string;
     variantes: Produto[];
@@ -67,7 +68,7 @@ export default function SizeModal({
               {group.categoria}
             </p>
             <h3 className="text-lg font-bold text-slate-900 leading-tight">
-              {group.nome}
+              {group.cor ? `${group.nome} - ${group.cor}` : group.nome}
             </h3>
             {totalNoCarrinho > 0 && (
               <p className="text-xs font-semibold text-emerald-600 mt-2 flex items-center gap-1">

@@ -16,7 +16,9 @@ import FloatingCartBar from '../components/loja/FloatingCartBar';
 import ScrollToTop from '../components/loja/ScrollToTop';
 
 interface ProdutoGroup {
+  key: string;
   nome: string;
+  cor: string;
   categoria: string;
   imagem?: string;
   variantes: Produto[];
@@ -45,13 +47,16 @@ export default function LojaVirtual() {
     const groups = new Map<string, Produto[]>();
     produtos.forEach((p) => {
       if (p.quantidade > 0) {
-        if (!groups.has(p.nome)) groups.set(p.nome, []);
-        groups.get(p.nome)!.push(p);
+        const key = `${p.nome}|${p.cor}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(p);
       }
     });
     return Array.from(groups.entries()).map(
-      ([nome, variantes]): ProdutoGroup => ({
-        nome,
+      ([key, variantes]): ProdutoGroup => ({
+        key,
+        nome: variantes[0].nome,
+        cor: variantes[0].cor,
         categoria: variantes[0].categoria,
         imagem: variantes.find((v) => v.imagem)?.imagem,
         variantes,
@@ -87,7 +92,7 @@ export default function LojaVirtual() {
   }, [produtoGroups, categoryFilter, searchQuery]);
 
   const activeGroup = selectedGroup
-    ? produtoGroups.find((g) => g.nome === selectedGroup)
+    ? produtoGroups.find((g) => g.key === selectedGroup)
     : null;
 
   const carrinhoItens = Object.entries(carrinho)
@@ -275,8 +280,8 @@ export default function LojaVirtual() {
           <div className="product-grid grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
             {filteredGroups.map((group) => (
               <ProductCard
-                key={group.nome}
-                nome={group.nome}
+                key={group.key}
+                nome={group.cor ? `${group.nome} - ${group.cor}` : group.nome}
                 categoria={group.categoria}
                 imagem={group.imagem}
                 precoMin={group.precoMin}
@@ -284,7 +289,7 @@ export default function LojaVirtual() {
                 totalTamanhos={group.variantes.filter((v) => v.quantidade > 0).length}
                 estoqueTotal={group.estoqueTotal}
                 formatBRL={formatBRL}
-                onClick={() => setSelectedGroup(group.nome)}
+                onClick={() => setSelectedGroup(group.key)}
               />
             ))}
           </div>
