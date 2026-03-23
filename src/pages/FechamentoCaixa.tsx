@@ -1,14 +1,16 @@
 import { useState, useMemo } from 'react';
 import { useStore } from '../store/useStore';
-import { Lock, Unlock, DollarSign, CreditCard, Banknote, QrCode, RefreshCw, Calendar, ShieldCheck } from 'lucide-react';
+import type { FechamentoCaixa as FechamentoType } from '../store/useStore';
+import { Lock, Unlock, DollarSign, CreditCard, Banknote, QrCode, RefreshCw, Calendar, ShieldCheck, Edit2, Trash2, X } from 'lucide-react';
 
 export default function FechamentoCaixa() {
-  const { vendas, fechamentosCaixa, fecharCaixa, reabrirCaixa, usuarioAtivo } = useStore();
+  const { vendas, fechamentosCaixa, fecharCaixa, reabrirCaixa, updateFechamento, deleteFechamento, usuarioAtivo, usuarios } = useStore();
   const [dataSelecionada, setDataSelecionada] = useState(() => new Date().toISOString().split('T')[0]);
+  const [editingFechamento, setEditingFechamento] = useState<FechamentoType | null>(null);
 
   const fechamentoAtual = fechamentosCaixa.find(f => f.data === dataSelecionada);
   const isFechado = fechamentoAtual?.status === 'fechado';
-  const isAdmin = usuarioAtivo?.role === 'Admin';
+  const isAdminOrGerente = usuarioAtivo?.role === 'Admin' || usuarioAtivo?.role === 'Gerente';
 
   // Vendas do dia selecionado
   const vendasDoDia = useMemo(() => {
@@ -104,7 +106,7 @@ export default function FechamentoCaixa() {
               </p>
             </div>
           </div>
-          {isAdmin && (
+          {isAdminOrGerente && (
             <button
               onClick={handleReabrir}
               className="flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl font-bold text-sm transition-colors"
@@ -278,6 +280,7 @@ export default function FechamentoCaixa() {
                   <th className="px-6 py-4 font-medium text-right">Total Vendas</th>
                   <th className="px-6 py-4 font-medium text-right">Trocas</th>
                   <th className="px-6 py-4 font-medium text-right">Total Geral</th>
+                  {isAdminOrGerente && <th className="px-6 py-4 font-medium text-right">Acoes</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -307,6 +310,30 @@ export default function FechamentoCaixa() {
                     <td className="px-6 py-4 text-right font-black text-sm text-slate-900">
                       {formatBRL(f.totalVendas + f.totalTrocas)}
                     </td>
+                    {isAdminOrGerente && (
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => setEditingFechamento(f)}
+                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Editar Operador"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm('Tem certeza que deseja apagar este fechamento? O dia ficara aberto para novo fechamento.')) {
+                                deleteFechamento(f.id);
+                              }
+                            }}
+                            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                            title="Apagar Fechamento"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -314,6 +341,80 @@ export default function FechamentoCaixa() {
           </div>
         </div>
       )}
+
+      {/* Modal de editar fechamento */}
+      {editingFechamento && (
+        <EditFechamentoModal
+          fechamento={editingFechamento}
+          usuarios={usuarios}
+          onClose={() => setEditingFechamento(null)}
+          onSave={(operadorId, operadorNome) => {
+            updateFechamento(editingFechamento.id, { operadorId, operadorNome });
+            setEditingFechamento(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function EditFechamentoModal({ fechamento, usuarios, onClose, onSave }: {
+  fechamento: FechamentoType;
+  usuarios: { id: string; nome: string; role: string }[];
+  onClose: () => void;
+  onSave: (operadorId: string, operadorNome: string) => void;
+}) {
+  const [operadorId, setOperadorId] = useState(fechamento.operadorId);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const usuario = usuarios.find(u => u.id === operadorId);
+    if (usuario) {
+      onSave(usuario.id, usuario.nome);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <h2 className="text-xl font-bold text-slate-800">Editar Fechamento</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-200 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1.5 text-slate-700">Data</label>
+            <p className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600">
+              {new Date(fechamento.data + 'T12:00:00').toLocaleDateString('pt-BR')}
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1.5 text-slate-700">Operador</label>
+            <select
+              value={operadorId}
+              onChange={e => setOperadorId(e.target.value)}
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors shadow-sm"
+            >
+              {usuarios.map(u => (
+                <option key={u.id} value={u.id}>{u.nome} ({u.role})</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="pt-4 flex justify-end gap-3">
+            <button type="button" onClick={onClose} className="px-5 py-2.5 hover:bg-slate-100 text-slate-600 rounded-xl font-medium transition-colors">
+              Cancelar
+            </button>
+            <button type="submit" className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors shadow-sm shadow-blue-200">
+              Salvar
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
