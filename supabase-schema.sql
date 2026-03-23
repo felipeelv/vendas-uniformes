@@ -31,13 +31,14 @@ CREATE TABLE clientes (
   nome TEXT NOT NULL,
   telefone TEXT NOT NULL DEFAULT '',
   documento TEXT NOT NULL DEFAULT '',
+  credito NUMERIC(10,2) NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- Tabela de Vendas
 CREATE TABLE vendas (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  tipo_venda TEXT NOT NULL DEFAULT 'venda' CHECK (tipo_venda IN ('venda', 'troca')),
+  tipo_venda TEXT NOT NULL DEFAULT 'venda' CHECK (tipo_venda IN ('venda', 'troca', 'devolucao')),
   metodo_pagamento TEXT NOT NULL DEFAULT 'DINHEIRO' CHECK (metodo_pagamento IN ('PIX', 'DEBITO', 'CREDITO_VISTA', 'CREDITO_PARCELADO', 'DINHEIRO')),
   parcelas INTEGER DEFAULT NULL,
   produto_id UUID REFERENCES produtos(id) ON DELETE SET NULL,
