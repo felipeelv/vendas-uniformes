@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 
-export const TAMANHOS_PADRAO = ['4', '6', '8', '10', '12', '14', '16', 'PP', 'P', 'M', 'G', 'GG', 'XG'] as const;
-export type Categoria = 'Camiseta' | 'Calça' | 'Bermuda' | 'Moletom' | 'Casaco';
+export const TAMANHOS_PADRAO = ['2', '4', '6', '8', '10', '12', '14', '16', 'PP', 'P', 'M', 'G', 'GG', 'XG', 'G1'] as const;
+export type Categoria = 'Camiseta' | 'Calça' | 'Bermuda' | 'Moletom' | 'Casaco' | 'Short Saia' | 'Calça Legging' | 'Blusa';
 export type TipoVenda = 'venda' | 'troca';
 export type MetodoPagamento = 'PIX' | 'CARTAO' | 'DINHEIRO';
 export type TipoItemVenda = 'saida' | 'entrada';
