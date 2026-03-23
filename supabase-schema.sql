@@ -38,7 +38,8 @@ CREATE TABLE clientes (
 CREATE TABLE vendas (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   tipo_venda TEXT NOT NULL DEFAULT 'venda' CHECK (tipo_venda IN ('venda', 'troca')),
-  metodo_pagamento TEXT NOT NULL DEFAULT 'DINHEIRO' CHECK (metodo_pagamento IN ('PIX', 'CARTAO', 'DINHEIRO')),
+  metodo_pagamento TEXT NOT NULL DEFAULT 'DINHEIRO' CHECK (metodo_pagamento IN ('PIX', 'DEBITO', 'CREDITO_VISTA', 'CREDITO_PARCELADO', 'DINHEIRO')),
+  parcelas INTEGER DEFAULT NULL,
   produto_id UUID REFERENCES produtos(id) ON DELETE SET NULL,
   produto_nome TEXT NOT NULL,
   quantidade INTEGER NOT NULL,

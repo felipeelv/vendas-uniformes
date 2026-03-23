@@ -4,7 +4,7 @@ import type { FechamentoCaixa as FechamentoType } from '../store/useStore';
 import { Lock, Unlock, DollarSign, CreditCard, Banknote, QrCode, RefreshCw, Calendar, ShieldCheck, Edit2, Trash2, X } from 'lucide-react';
 
 export default function FechamentoCaixa() {
-  const { vendas, fechamentosCaixa, fecharCaixa, reabrirCaixa, updateFechamento, deleteFechamento, usuarioAtivo, usuarios } = useStore();
+  const { vendas, fechamentosCaixa, fecharCaixa, reabrirCaixa, updateFechamento, deleteFechamento, deleteVenda, usuarioAtivo, usuarios } = useStore();
   const [dataSelecionada, setDataSelecionada] = useState(() => new Date().toISOString().split('T')[0]);
   const [editingFechamento, setEditingFechamento] = useState<FechamentoType | null>(null);
 
@@ -29,8 +29,11 @@ export default function FechamentoCaixa() {
     const totalGeral = vendasDoDia.reduce((acc, v) => acc + v.valorTotal, 0);
 
     const totalPix = vendasDoDia.filter(v => v.metodoPagamento === 'PIX').reduce((acc, v) => acc + v.valorTotal, 0);
-    const totalCartao = vendasDoDia.filter(v => v.metodoPagamento === 'CARTAO').reduce((acc, v) => acc + v.valorTotal, 0);
     const totalDinheiro = vendasDoDia.filter(v => v.metodoPagamento === 'DINHEIRO').reduce((acc, v) => acc + v.valorTotal, 0);
+    const totalDebito = vendasDoDia.filter(v => v.metodoPagamento === 'DEBITO').reduce((acc, v) => acc + v.valorTotal, 0);
+    const totalCredito = vendasDoDia.filter(v => v.metodoPagamento === 'CREDITO_VISTA' || v.metodoPagamento === 'CREDITO_PARCELADO').reduce((acc, v) => acc + v.valorTotal, 0);
+    // Backwards compat: old CARTAO entries
+    const totalCartaoLegado = vendasDoDia.filter(v => (v.metodoPagamento as string) === 'CARTAO').reduce((acc, v) => acc + v.valorTotal, 0);
 
     return {
       totalVendas,
@@ -39,12 +42,20 @@ export default function FechamentoCaixa() {
       quantidadeVendas: vendasNormais.length,
       quantidadeTrocas: trocas.length,
       totalPix,
-      totalCartao,
       totalDinheiro,
+      totalDebito: totalDebito + totalCartaoLegado,
+      totalCredito,
     };
   }, [vendasDoDia]);
 
   const formatBRL = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+
+  const formatPagamento = (m: string, parcelas?: number) => {
+    const labels: Record<string, string> = { PIX: 'PIX', DINHEIRO: 'Dinheiro', DEBITO: 'Debito', CREDITO_VISTA: 'Credito', CREDITO_PARCELADO: 'Credito', CARTAO: 'Cartao' };
+    const label = labels[m] || m;
+    if (m === 'CREDITO_PARCELADO' && parcelas) return `${label} ${parcelas}x`;
+    return label;
+  };
 
   const handleFechar = () => {
     if (confirm(`Deseja fechar o caixa do dia ${new Date(dataSelecionada + 'T12:00:00').toLocaleDateString('pt-BR')}? Apos o fechamento, nao sera possivel registrar novas vendas neste dia.`)) {
@@ -159,7 +170,7 @@ export default function FechamentoCaixa() {
       </div>
 
       {/* Resumo por forma de pagamento */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
             <QrCode className="w-6 h-6 text-emerald-600" />
@@ -170,21 +181,30 @@ export default function FechamentoCaixa() {
           </div>
         </div>
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
-            <CreditCard className="w-6 h-6 text-blue-600" />
-          </div>
-          <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Cartao</p>
-            <p className="text-xl font-black text-slate-900">{formatBRL(resumo.totalCartao)}</p>
-          </div>
-        </div>
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
             <Banknote className="w-6 h-6 text-amber-600" />
           </div>
           <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Dinheiro</p>
             <p className="text-xl font-black text-slate-900">{formatBRL(resumo.totalDinheiro)}</p>
+          </div>
+        </div>
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+            <CreditCard className="w-6 h-6 text-blue-600" />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Debito</p>
+            <p className="text-xl font-black text-slate-900">{formatBRL(resumo.totalDebito)}</p>
+          </div>
+        </div>
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
+            <CreditCard className="w-6 h-6 text-violet-600" />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Credito</p>
+            <p className="text-xl font-black text-slate-900">{formatBRL(resumo.totalCredito)}</p>
           </div>
         </div>
       </div>
@@ -204,12 +224,13 @@ export default function FechamentoCaixa() {
                 <th className="px-6 py-4 font-medium">Vendedor</th>
                 <th className="px-6 py-4 font-medium">Pagamento</th>
                 <th className="px-6 py-4 font-medium text-right">Valor</th>
+                {isAdminOrGerente && !isFechado && <th className="px-6 py-4 font-medium text-right">Acoes</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {vendasDoDia.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                  <td colSpan={isAdminOrGerente && !isFechado ? 7 : 6} className="px-6 py-12 text-center text-slate-500">
                     Nenhuma venda registrada neste dia.
                   </td>
                 </tr>
@@ -237,12 +258,27 @@ export default function FechamentoCaixa() {
                     <td className="px-6 py-4 text-slate-600 text-sm">{v.vendedorNome}</td>
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-600">
-                        {v.metodoPagamento === 'PIX' ? 'PIX' : v.metodoPagamento === 'CARTAO' ? 'Cartao' : 'Dinheiro'}
+                        {formatPagamento(v.metodoPagamento, v.parcelas)}
                       </span>
                     </td>
                     <td className={`px-6 py-4 text-right font-bold text-sm ${v.valorTotal >= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
                       {formatBRL(v.valorTotal)}
                     </td>
+                    {isAdminOrGerente && !isFechado && (
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={() => {
+                            if (confirm('Tem certeza que deseja apagar esta venda? O estoque sera revertido.')) {
+                              deleteVenda(v.id);
+                            }
+                          }}
+                          className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                          title="Apagar Venda"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
