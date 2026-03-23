@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 export const TAMANHOS_PADRAO = ['2', '4', '6', '8', '10', '12', '14', '16', 'PP', 'P', 'M', 'G', 'GG', 'XG', 'G1'] as const;
 export type Categoria = 'Camiseta' | 'Calça' | 'Bermuda' | 'Moletom' | 'Casaco' | 'Short Saia' | 'Calça Legging' | 'Blusa';
 export type TipoVenda = 'venda' | 'troca';
-export type MetodoPagamento = 'PIX' | 'CARTAO' | 'DINHEIRO';
+export type MetodoPagamento = 'PIX' | 'DEBITO' | 'CREDITO_VISTA' | 'CREDITO_PARCELADO' | 'DINHEIRO';
 export type TipoItemVenda = 'saida' | 'entrada';
 
 export interface Produto {
@@ -42,6 +42,7 @@ export interface Venda {
   id: string;
   tipoVenda: TipoVenda;
   metodoPagamento: MetodoPagamento;
+  parcelas?: number;
   itens: VendaItem[];
   produtoId: string;
   produtoNome: string;
@@ -126,15 +127,18 @@ interface StoreState {
     itens: ItemSaida[],
     metodoPagamento: MetodoPagamento,
     clienteId?: string,
-    clienteNome?: string
+    clienteNome?: string,
+    parcelas?: number
   ) => void;
   registrarTroca: (
     itensEntrada: ItemEntrada[],
     itensSaida: ItemSaida[],
     metodoPagamento: MetodoPagamento,
     clienteId?: string,
-    clienteNome?: string
+    clienteNome?: string,
+    parcelas?: number
   ) => void;
+  deleteVenda: (id: string) => void;
   fecharCaixa: (data: string) => void;
   reabrirCaixa: (id: string) => void;
   updateFechamento: (id: string, updates: { operadorId: string; operadorNome: string }) => void;
@@ -170,6 +174,7 @@ function dbToVenda(row: any, itens: VendaItem[]): Venda {
     id: row.id,
     tipoVenda: row.tipo_venda,
     metodoPagamento: row.metodo_pagamento,
+    parcelas: row.parcelas || undefined,
     itens,
     produtoId: row.produto_id || '',
     produtoNome: row.produto_nome || '',
@@ -427,7 +432,7 @@ export const useStore = create<StoreState>((set, get) => ({
     }));
   },
 
-  registrarVenda: async (itens, metodoPagamento, clienteId, clienteNome) => {
+  registrarVenda: async (itens, metodoPagamento, clienteId, clienteNome, parcelas) => {
     if (!supabase) return;
     const vendedor = get().usuarioAtivo;
     if (!vendedor || itens.length === 0) return;
@@ -443,6 +448,7 @@ export const useStore = create<StoreState>((set, get) => ({
     const { data: vendaRow } = await supabase.from('vendas').insert({
       tipo_venda: 'venda',
       metodo_pagamento: metodoPagamento,
+      parcelas: parcelas || null,
       produto_id: itens[0].produtoId,
       produto_nome: primeiroProduto?.nome || 'Produto removido',
       quantidade: itens.reduce((acc, item) => acc + item.quantidade, 0),
@@ -492,7 +498,7 @@ export const useStore = create<StoreState>((set, get) => ({
     set({ produtos: novoProdutos, vendas: [novaVenda, ...state.vendas] });
   },
 
-  registrarTroca: async (itensEntrada, itensSaida, metodoPagamento, clienteId, clienteNome) => {
+  registrarTroca: async (itensEntrada, itensSaida, metodoPagamento, clienteId, clienteNome, parcelas) => {
     if (!supabase) return;
     const vendedor = get().usuarioAtivo;
     if (!vendedor) return;
@@ -514,6 +520,7 @@ export const useStore = create<StoreState>((set, get) => ({
     const { data: vendaRow } = await supabase.from('vendas').insert({
       tipo_venda: 'troca',
       metodo_pagamento: metodoPagamento,
+      parcelas: parcelas || null,
       produto_id: itensSaida[0]?.produtoId || itensEntrada[0]?.produtoId || '',
       produto_nome: primeiroProdutoSaida?.nome || itensEntrada[0]?.produtoNome || 'Troca',
       quantidade: itensSaida.reduce((acc, item) => acc + item.quantidade, 0),
@@ -582,6 +589,53 @@ export const useStore = create<StoreState>((set, get) => ({
     set({ produtos: novoProdutos, vendas: [novaVenda, ...state.vendas] });
   },
 
+  deleteVenda: async (id) => {
+    if (!supabase) return;
+    const usuario = get().usuarioAtivo;
+    if (!usuario || (usuario.role !== 'Admin' && usuario.role !== 'Gerente')) return;
+
+    const state = get();
+    const venda = state.vendas.find(v => v.id === id);
+    if (!venda) return;
+
+    // Check if day is closed
+    const dataVenda = getDateStr(new Date(venda.data));
+    if (get().isCaixaFechado(dataVenda)) return;
+
+    // Revert stock based on sale items
+    for (const item of venda.itens) {
+      const produto = state.produtos.find(p => p.id === item.produtoId);
+      if (produto) {
+        if (item.tipoItem === 'saida') {
+          // Was sold, add back to stock
+          await supabase.from('produtos').update({ quantidade: produto.quantidade + item.quantidade }).eq('id', item.produtoId);
+        } else if (item.tipoItem === 'entrada') {
+          // Was returned, remove from stock
+          const novaQtd = Math.max(0, produto.quantidade - item.quantidade);
+          await supabase.from('produtos').update({ quantidade: novaQtd }).eq('id', item.produtoId);
+        }
+      }
+    }
+
+    // Delete venda (venda_itens cascade)
+    await supabase.from('vendas').delete().eq('id', id);
+
+    // Update local state
+    const novoProdutos = state.produtos.map(p => {
+      const itemSaida = venda.itens.find(i => i.produtoId === p.id && i.tipoItem === 'saida');
+      const itemEntrada = venda.itens.find(i => i.produtoId === p.id && i.tipoItem === 'entrada');
+      let novaQtd = p.quantidade;
+      if (itemSaida) novaQtd += itemSaida.quantidade;
+      if (itemEntrada) novaQtd = Math.max(0, novaQtd - itemEntrada.quantidade);
+      return { ...p, quantidade: novaQtd };
+    });
+
+    set({
+      vendas: state.vendas.filter(v => v.id !== id),
+      produtos: novoProdutos,
+    });
+  },
+
   fecharCaixa: async (data) => {
     if (!supabase) return;
     const vendedor = get().usuarioAtivo;
@@ -598,7 +652,7 @@ export const useStore = create<StoreState>((set, get) => ({
     const totalVendas = vendas.reduce((acc, v) => acc + v.valorTotal, 0);
     const totalTrocas = trocas.reduce((acc, v) => acc + v.valorTotal, 0);
     const totalPix = vendasDoDia.filter(v => v.metodoPagamento === 'PIX').reduce((acc, v) => acc + v.valorTotal, 0);
-    const totalCartao = vendasDoDia.filter(v => v.metodoPagamento === 'CARTAO').reduce((acc, v) => acc + v.valorTotal, 0);
+    const totalCartao = vendasDoDia.filter(v => ['DEBITO', 'CREDITO_VISTA', 'CREDITO_PARCELADO'].includes(v.metodoPagamento) || (v.metodoPagamento as string) === 'CARTAO').reduce((acc, v) => acc + v.valorTotal, 0);
     const totalDinheiro = vendasDoDia.filter(v => v.metodoPagamento === 'DINHEIRO').reduce((acc, v) => acc + v.valorTotal, 0);
 
     // Verificar se existe um fechamento reaberto para substituir

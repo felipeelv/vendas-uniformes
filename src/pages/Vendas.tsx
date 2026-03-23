@@ -32,7 +32,8 @@ export default function Vendas() {
   const [vendaSucesso, setVendaSucesso] = useState(false);
   const [mensagemSucesso, setMensagemSucesso] = useState('');
   const [checkoutStep, setCheckoutStep] = useState<'cart' | 'payment'>('cart');
-  const [metodoPagamento, setMetodoPagamento] = useState<'PIX' | 'CARTAO' | 'DINHEIRO'>('PIX');
+  const [metodoPagamento, setMetodoPagamento] = useState<'PIX' | 'DEBITO' | 'CREDITO_VISTA' | 'CREDITO_PARCELADO' | 'DINHEIRO'>('PIX');
+  const [parcelas, setParcelas] = useState<number>(2);
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 
   // Estado de troca
@@ -171,7 +172,8 @@ export default function Vendas() {
         itensSaida,
         metodoPagamento,
         clienteSelecionado || undefined,
-        clienteNome || undefined
+        clienteNome || undefined,
+        metodoPagamento === 'CREDITO_PARCELADO' ? parcelas : undefined
       );
       setMensagemSucesso('Troca Registrada');
     } else {
@@ -185,7 +187,8 @@ export default function Vendas() {
         itens,
         metodoPagamento,
         clienteSelecionado || undefined,
-        clienteNome || undefined
+        clienteNome || undefined,
+        metodoPagamento === 'CREDITO_PARCELADO' ? parcelas : undefined
       );
       setMensagemSucesso('Pagamento Aprovado');
     }
@@ -197,6 +200,8 @@ export default function Vendas() {
       setCarrinho({});
       setClienteSelecionado('');
       setCheckoutStep('cart');
+      setMetodoPagamento('PIX');
+      setParcelas(2);
       setIsTroca(false);
       setItensDevolvidos([]);
     }, 2500);
@@ -343,19 +348,50 @@ export default function Vendas() {
                         {isTroca ? 'Pagamento da Diferenca' : 'Forma de Pagamento'}
                       </span>
                     </div>
-                    <div className="p-5 grid grid-cols-3 gap-3">
-                      <button onClick={() => setMetodoPagamento('PIX')} className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${metodoPagamento === 'PIX' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300'}`}>
-                        <QrCode className="w-6 h-6" />
-                        <span className="font-bold text-sm">PIX</span>
-                      </button>
-                      <button onClick={() => setMetodoPagamento('CARTAO')} className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${metodoPagamento === 'CARTAO' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300'}`}>
-                        <CreditCard className="w-6 h-6" />
-                        <span className="font-bold text-sm">Cartao</span>
-                      </button>
-                      <button onClick={() => setMetodoPagamento('DINHEIRO')} className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${metodoPagamento === 'DINHEIRO' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300'}`}>
-                        <Banknote className="w-6 h-6" />
-                        <span className="font-bold text-sm">Dinheiro</span>
-                      </button>
+                    <div className="p-5 space-y-3">
+                      <div className="grid grid-cols-3 gap-3">
+                        <button onClick={() => setMetodoPagamento('PIX')} className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${metodoPagamento === 'PIX' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300'}`}>
+                          <QrCode className="w-6 h-6" />
+                          <span className="font-bold text-sm">PIX</span>
+                        </button>
+                        <button onClick={() => setMetodoPagamento('DINHEIRO')} className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${metodoPagamento === 'DINHEIRO' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300'}`}>
+                          <Banknote className="w-6 h-6" />
+                          <span className="font-bold text-sm">Dinheiro</span>
+                        </button>
+                        <button onClick={() => setMetodoPagamento('DEBITO')} className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${metodoPagamento === 'DEBITO' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300'}`}>
+                          <CreditCard className="w-6 h-6" />
+                          <span className="font-bold text-sm">Debito</span>
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button onClick={() => setMetodoPagamento('CREDITO_VISTA')} className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${metodoPagamento === 'CREDITO_VISTA' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300'}`}>
+                          <CreditCard className="w-6 h-6" />
+                          <span className="font-bold text-sm">Credito a Vista</span>
+                        </button>
+                        <button onClick={() => setMetodoPagamento('CREDITO_PARCELADO')} className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${metodoPagamento === 'CREDITO_PARCELADO' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300'}`}>
+                          <CreditCard className="w-6 h-6" />
+                          <span className="font-bold text-sm">Credito Parcelado</span>
+                        </button>
+                      </div>
+                      {metodoPagamento === 'CREDITO_PARCELADO' && (
+                        <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Parcelas</label>
+                          <div className="grid grid-cols-6 gap-2">
+                            {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => (
+                              <button
+                                key={n}
+                                onClick={() => setParcelas(n)}
+                                className={`py-2 rounded-lg text-sm font-bold transition-all ${parcelas === n ? 'bg-emerald-600 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'}`}
+                              >
+                                {n}x
+                              </button>
+                            ))}
+                          </div>
+                          <p className="text-xs text-slate-500 mt-2 font-medium text-center">
+                            {parcelas}x de {formatBRL(totalVenda / parcelas)}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

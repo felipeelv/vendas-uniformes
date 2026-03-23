@@ -145,7 +145,7 @@ export default function Financeiro() {
                     {mov.desc}
                     {mov.metodoPagamento && (
                       <span className="ml-2 text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-                        {mov.metodoPagamento === 'PIX' ? 'PIX' : mov.metodoPagamento === 'CARTAO' ? 'Cartao' : 'Dinheiro'}
+                        {({ PIX: 'PIX', DINHEIRO: 'Dinheiro', DEBITO: 'Debito', CREDITO_VISTA: 'Credito', CREDITO_PARCELADO: 'Credito Parc.', CARTAO: 'Cartao' } as Record<string, string>)[mov.metodoPagamento] || mov.metodoPagamento}
                       </span>
                     )}
                   </td>

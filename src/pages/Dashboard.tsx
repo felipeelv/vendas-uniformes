@@ -161,7 +161,7 @@ export default function Dashboard() {
                       </div>
                       <p className="text-xs text-slate-500 mt-0.5">
                         {new Date(v.data).toLocaleDateString('pt-BR')} • {v.quantidade} un. {v.tipoVenda === 'troca' ? 'trocada(s)' : 'vendida(s)'}
-                        {v.metodoPagamento && <span className="ml-1 text-slate-400">• {v.metodoPagamento === 'PIX' ? 'PIX' : v.metodoPagamento === 'CARTAO' ? 'Cartao' : 'Dinheiro'}</span>}
+                        {v.metodoPagamento && <span className="ml-1 text-slate-400">• {({ PIX: 'PIX', DINHEIRO: 'Dinheiro', DEBITO: 'Debito', CREDITO_VISTA: 'Credito', CREDITO_PARCELADO: 'Credito Parc.', CARTAO: 'Cartao' } as Record<string, string>)[v.metodoPagamento] || v.metodoPagamento}</span>}
                       </p>
                     </div>
                     <div className={`text-right font-medium ${v.tipoVenda === 'troca' ? 'text-amber-600' : 'text-emerald-600'}`}>

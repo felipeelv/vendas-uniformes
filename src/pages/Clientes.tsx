@@ -346,7 +346,7 @@ function HistoricoModal({ cliente, vendas, onClose }: {
                     </td>
                     <td className="px-6 py-3">
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-600">
-                        {v.metodoPagamento === 'PIX' ? 'PIX' : v.metodoPagamento === 'CARTAO' ? 'Cartao' : 'Dinheiro'}
+                        {({ PIX: 'PIX', DINHEIRO: 'Dinheiro', DEBITO: 'Debito', CREDITO_VISTA: 'Credito', CREDITO_PARCELADO: v.parcelas ? `Credito ${v.parcelas}x` : 'Credito', CARTAO: 'Cartao' } as Record<string, string>)[v.metodoPagamento] || v.metodoPagamento}
                       </span>
                     </td>
                     <td className={`px-6 py-3 text-right font-bold text-sm ${v.valorTotal >= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
