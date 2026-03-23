@@ -137,6 +137,8 @@ interface StoreState {
   ) => void;
   fecharCaixa: (data: string) => void;
   reabrirCaixa: (id: string) => void;
+  updateFechamento: (id: string, updates: { operadorId: string; operadorNome: string }) => void;
+  deleteFechamento: (id: string) => void;
   isCaixaFechado: (data: string) => boolean;
   addUsuario: (usuario: Omit<Usuario, 'id'>) => void;
   updateUsuario: (id: string, usuario: Partial<Usuario>) => void;
@@ -653,13 +655,34 @@ export const useStore = create<StoreState>((set, get) => ({
   reabrirCaixa: async (id) => {
     if (!supabase) return;
     const usuario = get().usuarioAtivo;
-    if (!usuario || usuario.role !== 'Admin') return;
+    if (!usuario || (usuario.role !== 'Admin' && usuario.role !== 'Gerente')) return;
 
     await supabase.from('fechamentos_caixa').update({ status: 'reaberto' }).eq('id', id);
     set(state => ({
       fechamentosCaixa: state.fechamentosCaixa.map(f =>
         f.id === id ? { ...f, status: 'reaberto' as const } : f
       ),
+    }));
+  },
+
+  updateFechamento: async (id, updates) => {
+    if (!supabase) return;
+    await supabase.from('fechamentos_caixa').update({
+      operador_id: updates.operadorId,
+      operador_nome: updates.operadorNome,
+    }).eq('id', id);
+    set(state => ({
+      fechamentosCaixa: state.fechamentosCaixa.map(f =>
+        f.id === id ? { ...f, operadorId: updates.operadorId, operadorNome: updates.operadorNome } : f
+      ),
+    }));
+  },
+
+  deleteFechamento: async (id) => {
+    if (!supabase) return;
+    await supabase.from('fechamentos_caixa').delete().eq('id', id);
+    set(state => ({
+      fechamentosCaixa: state.fechamentosCaixa.filter(f => f.id !== id),
     }));
   },
 

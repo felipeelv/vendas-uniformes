@@ -661,17 +661,20 @@ export default function Vendas() {
 
         <div className="p-5 border-b border-slate-100 bg-slate-50/50 shrink-0 space-y-3">
           <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Cliente / Aluno (Opcional)</label>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Cliente / Aluno <span className="text-rose-500">*</span></label>
             <select
               value={clienteSelecionado}
               onChange={e => setClienteSelecionado(e.target.value)}
-              className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm transition-colors"
+              className={`w-full px-3 py-2.5 bg-white border rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm transition-colors ${!clienteSelecionado ? 'border-rose-300' : 'border-slate-200'}`}
             >
-              <option value="">Venda Balcao (Sem Cadastro)</option>
+              <option value="">Selecione o aluno...</option>
               {clientes.map(c => (
-                <option key={c.id} value={c.id}>{c.nome}</option>
+                <option key={c.id} value={c.id}>{c.nome}{c.turma ? ` - ${c.turma}` : ''}</option>
               ))}
             </select>
+            {!clienteSelecionado && carrinhoItens.length > 0 && (
+              <p className="text-xs text-rose-500 mt-1 font-medium">Selecione um aluno para finalizar a venda</p>
+            )}
           </div>
 
           {/* Toggle de troca */}
@@ -827,7 +830,7 @@ export default function Vendas() {
           )}
 
           <button
-            disabled={carrinhoItens.length === 0 || (isTroca && itensDevolvidos.length === 0)}
+            disabled={carrinhoItens.length === 0 || !clienteSelecionado || (isTroca && itensDevolvidos.length === 0)}
             onClick={handleFinalizar}
             className={`relative w-full flex items-center justify-center gap-2 ${
               isTroca

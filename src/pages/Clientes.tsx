@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useStore } from '../store/useStore';
-import type { Cliente } from '../store/useStore';
-import { UsersRound, Plus, Search, Edit2, Trash2, X } from 'lucide-react';
+import type { Cliente, Venda } from '../store/useStore';
+import { UsersRound, Plus, Search, Edit2, Trash2, X, ShoppingBag, RefreshCw, DollarSign } from 'lucide-react';
 
 export default function Clientes() {
-  const { clientes, addCliente, updateCliente, deleteCliente } = useStore();
+  const { clientes, vendas, addCliente, updateCliente, deleteCliente } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
+  const [historicoCliente, setHistoricoCliente] = useState<Cliente | null>(null);
 
   const filteredClientes = clientes.filter(c => 
     c.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -76,7 +77,7 @@ export default function Clientes() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredClientes.map(cliente => (
-                <tr key={cliente.id} className="hover:bg-slate-50/50 transition-colors group">
+                <tr key={cliente.id} className="hover:bg-slate-50/50 transition-colors group cursor-pointer" onClick={() => setHistoricoCliente(cliente)}>
                   <td className="px-6 py-4">
                     <p className="font-semibold text-slate-900">{cliente.nome}</p>
                   </td>
@@ -91,15 +92,15 @@ export default function Clientes() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
-                        onClick={() => handleEdit(cliente)}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleEdit(cliente); }}
                         className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                         title="Editar Cliente"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
-                      <button 
-                        onClick={() => handleDelete(cliente.id)}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(cliente.id); }}
                         className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                         title="Excluir Cliente"
                       >
@@ -122,10 +123,18 @@ export default function Clientes() {
       </div>
 
       {isModalOpen && (
-        <ClienteModal 
-          cliente={editingCliente} 
-          onClose={() => setIsModalOpen(false)} 
-          onSave={editingCliente ? (id, data) => updateCliente(id, data) : (data) => addCliente(data)} 
+        <ClienteModal
+          cliente={editingCliente}
+          onClose={() => setIsModalOpen(false)}
+          onSave={editingCliente ? (id, data) => updateCliente(id, data) : (data) => addCliente(data)}
+        />
+      )}
+
+      {historicoCliente && (
+        <HistoricoModal
+          cliente={historicoCliente}
+          vendas={vendas}
+          onClose={() => setHistoricoCliente(null)}
         />
       )}
     </div>
@@ -183,7 +192,7 @@ function ClienteModal({ cliente, onClose, onSave }: {
             <label className="block text-sm font-medium mb-1.5 text-slate-700">Turma</label>
             <input
               type="text"
-              placeholder="Ex: 5A"
+              placeholder="Ex: 1ºA"
               value={formData.turma}
               onChange={e => setFormData({...formData, turma: e.target.value})}
               className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors shadow-sm"
@@ -221,7 +230,7 @@ function ClienteModal({ cliente, onClose, onSave }: {
             >
               Cancelar
             </button>
-            <button 
+            <button
               type="submit"
               className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors shadow-sm shadow-blue-200"
             >
@@ -229,6 +238,126 @@ function ClienteModal({ cliente, onClose, onSave }: {
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+function HistoricoModal({ cliente, vendas, onClose }: {
+  cliente: Cliente;
+  vendas: Venda[];
+  onClose: () => void;
+}) {
+  const vendasCliente = useMemo(() =>
+    vendas.filter(v => v.clienteId === cliente.id).sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()),
+    [vendas, cliente.id]
+  );
+
+  const totalGasto = vendasCliente.filter(v => v.tipoVenda === 'venda').reduce((acc, v) => acc + v.valorTotal, 0);
+  const totalTrocas = vendasCliente.filter(v => v.tipoVenda === 'troca').length;
+
+  const formatBRL = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-start bg-slate-50/50 shrink-0">
+          <div>
+            <h2 className="text-xl font-bold text-slate-800">{cliente.nome}</h2>
+            <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
+              {cliente.turma && <span>Turma: {cliente.turma}</span>}
+              {cliente.telefone && <span>{cliente.telefone}</span>}
+            </div>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-200 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Resumo */}
+        <div className="px-6 py-4 border-b border-slate-100 grid grid-cols-3 gap-4 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+              <DollarSign className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Gasto</p>
+              <p className="text-lg font-black text-slate-900">{formatBRL(totalGasto)}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+              <ShoppingBag className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Compras</p>
+              <p className="text-lg font-black text-slate-900">{vendasCliente.filter(v => v.tipoVenda === 'venda').length}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+              <RefreshCw className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Trocas</p>
+              <p className="text-lg font-black text-slate-900">{totalTrocas}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Lista de vendas */}
+        <div className="flex-1 overflow-y-auto">
+          {vendasCliente.length === 0 ? (
+            <div className="px-6 py-12 text-center text-slate-500">
+              Nenhuma compra registrada para este aluno.
+            </div>
+          ) : (
+            <table className="w-full text-left border-collapse">
+              <thead className="sticky top-0 bg-white">
+                <tr className="text-slate-500 text-xs uppercase tracking-wider border-b border-slate-100">
+                  <th className="px-6 py-3 font-semibold">Data</th>
+                  <th className="px-6 py-3 font-semibold">Tipo</th>
+                  <th className="px-6 py-3 font-semibold">Produto</th>
+                  <th className="px-6 py-3 font-semibold">Pagamento</th>
+                  <th className="px-6 py-3 font-semibold text-right">Valor</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {vendasCliente.map(v => (
+                  <tr key={v.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-6 py-3 text-sm text-slate-600 font-medium">
+                      {new Date(v.data).toLocaleDateString('pt-BR')}
+                    </td>
+                    <td className="px-6 py-3">
+                      {v.tipoVenda === 'troca' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700">
+                          <RefreshCw className="w-3 h-3" /> Troca
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
+                          Venda
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-3 text-sm text-slate-800 font-medium">
+                      {v.produtoNome}
+                      {v.quantidade > 1 && <span className="text-slate-400 ml-1">({v.quantidade} un)</span>}
+                    </td>
+                    <td className="px-6 py-3">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-600">
+                        {v.metodoPagamento === 'PIX' ? 'PIX' : v.metodoPagamento === 'CARTAO' ? 'Cartao' : 'Dinheiro'}
+                      </span>
+                    </td>
+                    <td className={`px-6 py-3 text-right font-bold text-sm ${v.valorTotal >= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                      {formatBRL(v.valorTotal)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
     </div>
   );
