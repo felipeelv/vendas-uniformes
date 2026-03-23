@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useStore } from '../store/useStore';
 import type { Cliente, Venda } from '../store/useStore';
-import { UsersRound, Plus, Search, Edit2, Trash2, X, ShoppingBag, RefreshCw, DollarSign } from 'lucide-react';
+import { UsersRound, Plus, Search, Edit2, Trash2, X, ShoppingBag, RefreshCw, DollarSign, ArrowDownLeft } from 'lucide-react';
 
 export default function Clientes() {
   const { clientes, vendas, addCliente, updateCliente, deleteCliente } = useStore();
@@ -72,6 +72,7 @@ export default function Clientes() {
                 <th className="px-6 py-4 font-semibold">Turma</th>
                 <th className="px-6 py-4 font-semibold">Telefone</th>
                 <th className="px-6 py-4 font-semibold">Documento</th>
+                <th className="px-6 py-4 font-semibold text-right">Credito</th>
                 <th className="px-6 py-4 font-semibold text-right">Ações</th>
               </tr>
             </thead>
@@ -89,6 +90,15 @@ export default function Clientes() {
                   </td>
                   <td className="px-6 py-4 text-slate-600">
                     {cliente.documento || '-'}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    {cliente.credito > 0 ? (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cliente.credito)}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 text-sm">-</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -112,7 +122,7 @@ export default function Clientes() {
               ))}
               {filteredClientes.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
                     Nenhum cliente cadastrado ou encontrado na busca.
                   </td>
                 </tr>
@@ -158,7 +168,7 @@ function ClienteModal({ cliente, onClose, onSave }: {
     if (cliente) {
       await onSave(cliente.id, formData);
     } else {
-      await onSave(formData);
+      await onSave({ ...formData, credito: 0 });
     }
     onClose();
   };
@@ -276,7 +286,7 @@ function HistoricoModal({ cliente, vendas, onClose }: {
         </div>
 
         {/* Resumo */}
-        <div className="px-6 py-4 border-b border-slate-100 grid grid-cols-3 gap-4 shrink-0">
+        <div className="px-6 py-4 border-b border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-4 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
               <DollarSign className="w-5 h-5 text-emerald-600" />
@@ -302,6 +312,15 @@ function HistoricoModal({ cliente, vendas, onClose }: {
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Trocas</p>
               <p className="text-lg font-black text-slate-900">{totalTrocas}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
+              <DollarSign className="w-5 h-5 text-violet-600" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Credito</p>
+              <p className={`text-lg font-black ${cliente.credito > 0 ? 'text-emerald-600' : 'text-slate-900'}`}>{formatBRL(cliente.credito)}</p>
             </div>
           </div>
         </div>
@@ -330,7 +349,11 @@ function HistoricoModal({ cliente, vendas, onClose }: {
                       {new Date(v.data).toLocaleDateString('pt-BR')}
                     </td>
                     <td className="px-6 py-3">
-                      {v.tipoVenda === 'troca' ? (
+                      {v.tipoVenda === 'devolucao' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-violet-100 text-violet-700">
+                          <ArrowDownLeft className="w-3 h-3" /> Devolucao
+                        </span>
+                      ) : v.tipoVenda === 'troca' ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700">
                           <RefreshCw className="w-3 h-3" /> Troca
                         </span>

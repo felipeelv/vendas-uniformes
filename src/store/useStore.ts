@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 
 export const TAMANHOS_PADRAO = ['2', '4', '6', '8', '10', '12', '14', '16', 'PP', 'P', 'M', 'G', 'GG', 'XG', 'G1'] as const;
 export type Categoria = 'Camiseta' | 'Calça' | 'Bermuda' | 'Moletom' | 'Casaco' | 'Short Saia' | 'Calça Legging' | 'Blusa';
-export type TipoVenda = 'venda' | 'troca';
+export type TipoVenda = 'venda' | 'troca' | 'devolucao';
 export type MetodoPagamento = 'PIX' | 'DEBITO' | 'CREDITO_VISTA' | 'CREDITO_PARCELADO' | 'DINHEIRO';
 export type TipoItemVenda = 'saida' | 'entrada';
 
@@ -25,6 +25,7 @@ export interface Cliente {
   turma: string;
   telefone: string;
   documento: string;
+  credito: number;
 }
 
 export interface VendaItem {
@@ -128,7 +129,8 @@ interface StoreState {
     metodoPagamento: MetodoPagamento,
     clienteId?: string,
     clienteNome?: string,
-    parcelas?: number
+    parcelas?: number,
+    creditoUsado?: number
   ) => void;
   registrarTroca: (
     itensEntrada: ItemEntrada[],
@@ -137,6 +139,12 @@ interface StoreState {
     clienteId?: string,
     clienteNome?: string,
     parcelas?: number
+  ) => void;
+  registrarDevolucao: (
+    produtoId: string,
+    quantidade: number,
+    clienteId: string,
+    clienteNome: string
   ) => void;
   deleteVenda: (id: string) => void;
   fecharCaixa: (data: string) => void;
@@ -256,7 +264,7 @@ export const useStore = create<StoreState>((set, get) => ({
       loaded: true,
       usuarios: (usuariosRes.data || []).map(u => ({ id: u.id, nome: u.nome, role: u.role, senha: u.senha })),
       produtos: (produtosRes.data || []).map(dbToProduto),
-      clientes: (clientesRes.data || []).map(c => ({ id: c.id, nome: c.nome, turma: c.turma || '', telefone: c.telefone || '', documento: c.documento || '' })),
+      clientes: (clientesRes.data || []).map(c => ({ id: c.id, nome: c.nome, turma: c.turma || '', telefone: c.telefone || '', documento: c.documento || '', credito: Number(c.credito) || 0 })),
       vendas,
       despesas: (despesasRes.data || []).map(dbToDespesa),
       fechamentosCaixa: (fechamentosRes.data || []).map(dbToFechamento),
@@ -377,7 +385,7 @@ export const useStore = create<StoreState>((set, get) => ({
       documento: cliente.documento || '',
     }).select().single();
     if (data) {
-      set(state => ({ clientes: [...state.clientes, { id: data.id, nome: data.nome, turma: data.turma || '', telefone: data.telefone || '', documento: data.documento || '' }] }));
+      set(state => ({ clientes: [...state.clientes, { id: data.id, nome: data.nome, turma: data.turma || '', telefone: data.telefone || '', documento: data.documento || '', credito: 0 }] }));
     }
   },
 
@@ -400,7 +408,7 @@ export const useStore = create<StoreState>((set, get) => ({
 
     const { data } = await supabase.from('clientes').insert(rows).select();
     if (data) {
-      const novosClientes = data.map((c: any) => ({ id: c.id, nome: c.nome, turma: c.turma || '', telefone: c.telefone || '', documento: c.documento || '' }));
+      const novosClientes = data.map((c: any) => ({ id: c.id, nome: c.nome, turma: c.turma || '', telefone: c.telefone || '', documento: c.documento || '', credito: 0 }));
       set(state => ({ clientes: [...state.clientes, ...novosClientes] }));
     }
 
@@ -432,7 +440,7 @@ export const useStore = create<StoreState>((set, get) => ({
     }));
   },
 
-  registrarVenda: async (itens, metodoPagamento, clienteId, clienteNome, parcelas) => {
+  registrarVenda: async (itens, metodoPagamento, clienteId, clienteNome, parcelas, creditoUsado) => {
     if (!supabase) return;
     const vendedor = get().usuarioAtivo;
     if (!vendedor || itens.length === 0) return;
@@ -486,6 +494,17 @@ export const useStore = create<StoreState>((set, get) => ({
       }
     }
 
+    // Deduct credit from client if used
+    let novoClientes = state.clientes;
+    if (creditoUsado && creditoUsado > 0 && clienteId) {
+      const cliente = state.clientes.find(c => c.id === clienteId);
+      if (cliente) {
+        const novoCredito = Math.max(0, cliente.credito - creditoUsado);
+        await supabase.from('clientes').update({ credito: novoCredito }).eq('id', clienteId);
+        novoClientes = state.clientes.map(c => c.id === clienteId ? { ...c, credito: novoCredito } : c);
+      }
+    }
+
     // Atualizar state local
     const vendaItens: VendaItem[] = (itensRows || []).map(dbToVendaItem);
     const novaVenda = dbToVenda(vendaRow, vendaItens);
@@ -495,7 +514,7 @@ export const useStore = create<StoreState>((set, get) => ({
       return p;
     });
 
-    set({ produtos: novoProdutos, vendas: [novaVenda, ...state.vendas] });
+    set({ produtos: novoProdutos, clientes: novoClientes, vendas: [novaVenda, ...state.vendas] });
   },
 
   registrarTroca: async (itensEntrada, itensSaida, metodoPagamento, clienteId, clienteNome, parcelas) => {
@@ -587,6 +606,65 @@ export const useStore = create<StoreState>((set, get) => ({
     });
 
     set({ produtos: novoProdutos, vendas: [novaVenda, ...state.vendas] });
+  },
+
+  registrarDevolucao: async (produtoId, quantidade, clienteId, clienteNome) => {
+    if (!supabase) return;
+    const vendedor = get().usuarioAtivo;
+    if (!vendedor) return;
+
+    const state = get();
+    const produto = state.produtos.find(p => p.id === produtoId);
+    if (!produto) return;
+
+    const valorCredito = produto.precoVenda * quantidade;
+
+    // Insert venda record as devolucao
+    const { data: vendaRow } = await supabase.from('vendas').insert({
+      tipo_venda: 'devolucao',
+      metodo_pagamento: 'DINHEIRO',
+      produto_id: produtoId,
+      produto_nome: produto.nome,
+      quantidade,
+      valor_total: -valorCredito,
+      data: new Date().toISOString(),
+      vendedor_id: vendedor.id,
+      vendedor_nome: vendedor.nome,
+      cliente_id: clienteId,
+      cliente_nome: clienteNome,
+    }).select().single();
+
+    if (!vendaRow) return;
+
+    // Insert venda_itens
+    const { data: itensRows } = await supabase.from('venda_itens').insert({
+      venda_id: vendaRow.id,
+      tipo_item: 'entrada',
+      produto_id: produtoId,
+      produto_nome: `${produto.nome} (${produto.tamanho})`,
+      quantidade,
+      preco_unitario: produto.precoVenda,
+      valor_total: valorCredito,
+    }).select();
+
+    // Return product to stock
+    const novaQtd = produto.quantidade + quantidade;
+    await supabase.from('produtos').update({ quantidade: novaQtd }).eq('id', produtoId);
+
+    // Add credit to client
+    const cliente = state.clientes.find(c => c.id === clienteId);
+    const novoCredito = (cliente?.credito || 0) + valorCredito;
+    await supabase.from('clientes').update({ credito: novoCredito }).eq('id', clienteId);
+
+    // Update local state
+    const vendaItens: VendaItem[] = (itensRows || []).map(dbToVendaItem);
+    const novaVenda = dbToVenda(vendaRow, vendaItens);
+
+    set({
+      produtos: state.produtos.map(p => p.id === produtoId ? { ...p, quantidade: novaQtd } : p),
+      clientes: state.clientes.map(c => c.id === clienteId ? { ...c, credito: novoCredito } : c),
+      vendas: [novaVenda, ...state.vendas],
+    });
   },
 
   deleteVenda: async (id) => {

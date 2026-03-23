@@ -158,6 +158,7 @@ export default function LojaVirtual() {
         turma: '',
         telefone: formData.telefone,
         documento: 'Site',
+        credito: 0,
       });
       const novosClientes = useStore.getState().clientes;
       const novoCli = novosClientes.find((c) => c.telefone === formData.telefone);

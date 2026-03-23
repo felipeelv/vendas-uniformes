@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useStore } from '../store/useStore';
 import type { Produto } from '../store/useStore';
-import { ShoppingCart, Plus, Minus, Search, CheckCircle2, ChevronRight, ChevronLeft, ImageOff, Trash2, X, RefreshCw, ArrowDownLeft, Lock, QrCode, CreditCard, Banknote, Package } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Search, CheckCircle2, ChevronRight, ChevronLeft, ImageOff, Trash2, X, RefreshCw, ArrowDownLeft, Lock, QrCode, CreditCard, Banknote, Package, DollarSign } from 'lucide-react';
 
 interface ProdutoGroup {
   key: string;
@@ -23,7 +23,7 @@ interface ItemDevolvido {
 }
 
 export default function Vendas() {
-  const { produtos, clientes, registrarVenda, registrarTroca, isCaixaFechado, usuarioAtivo } = useStore();
+  const { produtos, clientes, registrarVenda, registrarTroca, registrarDevolucao, isCaixaFechado, usuarioAtivo } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoriaFilter, setCategoriaFilter] = useState<string>('Todas');
   const [clienteSelecionado, setClienteSelecionado] = useState<string>('');
@@ -41,6 +41,16 @@ export default function Vendas() {
   const [itensDevolvidos, setItensDevolvidos] = useState<ItemDevolvido[]>([]);
   const [produtoDevolvidoId, setProdutoDevolvidoId] = useState('');
   const [qtdDevolvida, setQtdDevolvida] = useState(1);
+
+  // Estado de devolução
+  const [isDevolucao, setIsDevolucao] = useState(false);
+  const [devProdutoId, setDevProdutoId] = useState('');
+  const [devQtd, setDevQtd] = useState(1);
+
+  // Crédito do aluno
+  const [usarCredito, setUsarCredito] = useState(false);
+  const clienteAtual = clientes.find(c => c.id === clienteSelecionado);
+  const creditoDisponivel = clienteAtual?.credito || 0;
 
   const hoje = new Date().toISOString().split('T')[0];
   const caixaFechado = isCaixaFechado(hoje);
@@ -145,6 +155,8 @@ export default function Vendas() {
   const totalSaida = carrinhoItens.reduce((acc, item) => acc + (item.produto.precoVenda * item.qtd), 0);
   const totalEntrada = itensDevolvidos.reduce((acc, item) => acc + item.valorTotal, 0);
   const totalVenda = isTroca ? totalSaida - totalEntrada : totalSaida;
+  const creditoAplicado = usarCredito ? Math.min(creditoDisponivel, totalSaida) : 0;
+  const totalAPagar = totalVenda - creditoAplicado;
   const totalPecas = carrinhoItens.reduce((acc, item) => acc + item.qtd, 0);
 
   const handleFinalizar = () => {
@@ -183,12 +195,14 @@ export default function Vendas() {
         valorTotal: produto.precoVenda * qtd,
       }));
 
+      const creditoAUsar = usarCredito ? Math.min(creditoDisponivel, totalVenda) : 0;
       await registrarVenda(
         itens,
         metodoPagamento,
         clienteSelecionado || undefined,
         clienteNome || undefined,
-        metodoPagamento === 'CREDITO_PARCELADO' ? parcelas : undefined
+        metodoPagamento === 'CREDITO_PARCELADO' ? parcelas : undefined,
+        creditoAUsar > 0 ? creditoAUsar : undefined
       );
       setMensagemSucesso('Pagamento Aprovado');
     }
@@ -202,8 +216,10 @@ export default function Vendas() {
       setCheckoutStep('cart');
       setMetodoPagamento('PIX');
       setParcelas(2);
+      setUsarCredito(false);
       setIsTroca(false);
       setItensDevolvidos([]);
+      setIsDevolucao(false);
     }, 2500);
   };
 
@@ -340,8 +356,27 @@ export default function Vendas() {
                   </div>
                 </div>
 
+                {/* Usar crédito do aluno */}
+                {!isTroca && creditoDisponivel > 0 && (
+                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                    <label className="flex items-center gap-4 px-5 py-4 cursor-pointer select-none">
+                      <div className={`relative w-10 h-6 rounded-full transition-colors ${usarCredito ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+                        <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${usarCredito ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+                      </div>
+                      <div className="flex-1">
+                        <span className="font-bold text-slate-800 text-sm">Usar credito do aluno</span>
+                        <p className="text-xs text-emerald-600 font-bold">{formatBRL(creditoDisponivel)} disponivel</p>
+                      </div>
+                      {usarCredito && (
+                        <span className="text-sm font-black text-emerald-600">-{formatBRL(Math.min(creditoDisponivel, totalSaida))}</span>
+                      )}
+                      <input type="checkbox" checked={usarCredito} onChange={e => setUsarCredito(e.target.checked)} className="sr-only" />
+                    </label>
+                  </div>
+                )}
+
                 {/* Forma de pagamento */}
-                {(!isTroca || totalVenda > 0) && (
+                {(!isTroca || totalVenda > 0) && !(usarCredito && creditoDisponivel >= totalSaida) && (
                   <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                     <div className="px-5 py-4 border-b border-slate-100">
                       <span className="font-bold text-slate-800">
@@ -388,7 +423,7 @@ export default function Vendas() {
                             ))}
                           </div>
                           <p className="text-xs text-slate-500 mt-2 font-medium text-center">
-                            {parcelas}x de {formatBRL(totalVenda / parcelas)}
+                            {parcelas}x de {formatBRL((usarCredito ? totalAPagar : totalVenda) / parcelas)}
                           </p>
                         </div>
                       )}
@@ -443,17 +478,27 @@ export default function Vendas() {
                         </span>
                       </div>
                     )}
+
+                    {usarCredito && creditoAplicado > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-emerald-600">Credito do aluno</span>
+                        <span className="font-medium text-emerald-600">-{formatBRL(creditoAplicado)}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="border-t border-slate-100 mt-4 pt-4">
                     <div className="flex justify-between items-center">
-                      <span className="text-lg font-bold text-slate-900">Total</span>
-                      <span className={`text-2xl font-black ${isTroca && totalVenda <= 0 ? 'text-amber-600' : 'text-slate-900'}`}>
-                        {formatBRL(Math.abs(totalVenda))}
+                      <span className="text-lg font-bold text-slate-900">{usarCredito && creditoAplicado > 0 ? 'A pagar' : 'Total'}</span>
+                      <span className={`text-2xl font-black ${isTroca && totalVenda <= 0 ? 'text-amber-600' : totalAPagar <= 0 && usarCredito ? 'text-emerald-600' : 'text-slate-900'}`}>
+                        {formatBRL(Math.abs(usarCredito ? totalAPagar : totalVenda))}
                       </span>
                     </div>
                     {isTroca && totalVenda < 0 && (
                       <p className="text-xs text-amber-600 text-right mt-1 font-medium">Credito ao cliente</p>
+                    )}
+                    {usarCredito && totalAPagar <= 0 && !isTroca && (
+                      <p className="text-xs text-emerald-600 text-right mt-1 font-medium">Coberto pelo credito do aluno</p>
                     )}
                   </div>
 
@@ -711,19 +756,32 @@ export default function Vendas() {
             {!clienteSelecionado && carrinhoItens.length > 0 && (
               <p className="text-xs text-rose-500 mt-1 font-medium">Selecione um aluno para finalizar a venda</p>
             )}
+            {clienteSelecionado && creditoDisponivel > 0 && (
+              <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg">
+                <DollarSign className="w-4 h-4 text-emerald-600" />
+                <span className="text-xs font-bold text-emerald-700">Credito disponivel: {formatBRL(creditoDisponivel)}</span>
+              </div>
+            )}
           </div>
 
-          {/* Toggle de troca */}
-          <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all select-none ${isTroca ? 'border-amber-400 bg-amber-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
-            <div className={`relative w-10 h-6 rounded-full transition-colors ${isTroca ? 'bg-amber-500' : 'bg-slate-300'}`}>
-              <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${isTroca ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
-            </div>
-            <div className="flex items-center gap-2">
+          {/* Botões de modo: Troca e Devolução */}
+          <div className="flex gap-2">
+            <label className={`flex-1 flex items-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all select-none ${isTroca ? 'border-amber-400 bg-amber-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+              <div className={`relative w-8 h-5 rounded-full transition-colors ${isTroca ? 'bg-amber-500' : 'bg-slate-300'}`}>
+                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${isTroca ? 'translate-x-[14px]' : 'translate-x-0.5'}`} />
+              </div>
               <RefreshCw className={`w-4 h-4 ${isTroca ? 'text-amber-600' : 'text-slate-400'}`} />
-              <span className={`text-sm font-bold ${isTroca ? 'text-amber-700' : 'text-slate-600'}`}>Esta venda e uma troca</span>
-            </div>
-            <input type="checkbox" checked={isTroca} onChange={e => { setIsTroca(e.target.checked); if (!e.target.checked) setItensDevolvidos([]); }} className="sr-only" />
-          </label>
+              <span className={`text-xs font-bold ${isTroca ? 'text-amber-700' : 'text-slate-600'}`}>Troca</span>
+              <input type="checkbox" checked={isTroca} onChange={e => { setIsTroca(e.target.checked); setIsDevolucao(false); if (!e.target.checked) setItensDevolvidos([]); }} className="sr-only" />
+            </label>
+            <button
+              onClick={() => { setIsDevolucao(!isDevolucao); setIsTroca(false); setItensDevolvidos([]); }}
+              className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${isDevolucao ? 'border-violet-400 bg-violet-50 text-violet-700' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}
+            >
+              <ArrowDownLeft className="w-4 h-4" />
+              <span className="text-xs font-bold">Devolucao</span>
+            </button>
+          </div>
         </div>
 
         {/* Secao de produtos devolvidos (troca) */}
@@ -780,6 +838,61 @@ export default function Vendas() {
             ) : (
               <p className="text-xs text-amber-500 text-center py-2">Nenhum produto devolvido adicionado.</p>
             )}
+          </div>
+        )}
+
+        {/* Secao de devolução */}
+        {isDevolucao && clienteSelecionado && (
+          <div className="p-4 border-b border-violet-200 bg-violet-50/50 shrink-0">
+            <div className="flex items-center gap-2 mb-3">
+              <ArrowDownLeft className="w-4 h-4 text-violet-600" />
+              <span className="text-xs font-bold text-violet-700 uppercase tracking-widest">Registrar Devolucao</span>
+            </div>
+            <div className="flex gap-2 mb-3">
+              <select
+                value={devProdutoId}
+                onChange={e => setDevProdutoId(e.target.value)}
+                className="flex-1 px-2 py-2 bg-white border border-violet-200 rounded-lg text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-400"
+              >
+                <option value="">Selecionar produto...</option>
+                {produtos.map(p => (
+                  <option key={p.id} value={p.id}>{p.nome} ({p.tamanho}) - {formatBRL(p.precoVenda)}</option>
+                ))}
+              </select>
+              <input
+                type="number"
+                min={1}
+                value={devQtd}
+                onChange={e => setDevQtd(Math.max(1, Number(e.target.value)))}
+                className="w-14 px-2 py-2 bg-white border border-violet-200 rounded-lg text-xs font-bold text-center focus:outline-none focus:ring-2 focus:ring-violet-400"
+              />
+              <button
+                onClick={async () => {
+                  if (!devProdutoId || !clienteSelecionado) return;
+                  const cli = clientes.find(c => c.id === clienteSelecionado);
+                  await registrarDevolucao(devProdutoId, devQtd, clienteSelecionado, cli?.nome || '');
+                  setDevProdutoId('');
+                  setDevQtd(1);
+                  setMensagemSucesso('Devolucao Registrada');
+                  setVendaSucesso(true);
+                  setTimeout(() => { setVendaSucesso(false); setMensagemSucesso(''); setIsDevolucao(false); }, 2500);
+                }}
+                disabled={!devProdutoId}
+                className="px-3 py-2 bg-violet-600 hover:bg-violet-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg text-xs font-bold transition-colors"
+              >
+                Devolver
+              </button>
+            </div>
+            {devProdutoId && (
+              <p className="text-xs text-violet-600 font-medium">
+                Credito de {formatBRL((produtos.find(p => p.id === devProdutoId)?.precoVenda || 0) * devQtd)} sera adicionado ao aluno.
+              </p>
+            )}
+          </div>
+        )}
+        {isDevolucao && !clienteSelecionado && (
+          <div className="p-4 border-b border-violet-200 bg-violet-50/50 shrink-0">
+            <p className="text-xs text-violet-600 font-medium text-center">Selecione um aluno para registrar a devolucao.</p>
           </div>
         )}
 

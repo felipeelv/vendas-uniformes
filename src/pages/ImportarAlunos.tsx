@@ -89,6 +89,7 @@ export default function ImportarAlunos() {
         turma: a.turma,
         telefone: '',
         documento: '',
+        credito: 0,
       })));
       setResultado(res);
       setPreview([]);
