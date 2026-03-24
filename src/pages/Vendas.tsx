@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useStore } from '../store/useStore';
+import { useStore, formatTurma } from '../store/useStore';
 import type { Produto } from '../store/useStore';
 import { ShoppingCart, Plus, Minus, Search, CheckCircle2, ChevronRight, ChevronLeft, ImageOff, Trash2, X, RefreshCw, ArrowDownLeft, Lock, QrCode, CreditCard, Banknote, Package, DollarSign } from 'lucide-react';
 
@@ -750,7 +750,7 @@ export default function Vendas() {
             >
               <option value="">Selecione o aluno...</option>
               {clientes.map(c => (
-                <option key={c.id} value={c.id}>{c.nome}{c.turma ? ` - ${c.turma}` : ''}</option>
+                <option key={c.id} value={c.id}>{c.nome}{c.turma ? ` - ${formatTurma(c.turma)}` : ''}</option>
               ))}
             </select>
             {!clienteSelecionado && carrinhoItens.length > 0 && (

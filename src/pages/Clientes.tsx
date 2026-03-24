@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useStore } from '../store/useStore';
+import { useStore, formatTurma } from '../store/useStore';
 import type { Cliente, Venda } from '../store/useStore';
 import { UsersRound, Plus, Search, Edit2, Trash2, X, ShoppingBag, RefreshCw, DollarSign, ArrowDownLeft } from 'lucide-react';
 
@@ -83,7 +83,7 @@ export default function Clientes() {
                     <p className="font-semibold text-slate-900">{cliente.nome}</p>
                   </td>
                   <td className="px-6 py-4 text-slate-600">
-                    {cliente.turma || '-'}
+                    {cliente.turma ? formatTurma(cliente.turma) : '-'}
                   </td>
                   <td className="px-6 py-4 text-slate-600">
                     {cliente.telefone || '-'}
@@ -276,7 +276,7 @@ function HistoricoModal({ cliente, vendas, onClose }: {
           <div>
             <h2 className="text-xl font-bold text-slate-800">{cliente.nome}</h2>
             <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
-              {cliente.turma && <span>Turma: {cliente.turma}</span>}
+              {cliente.turma && <span>Turma: {formatTurma(cliente.turma)}</span>}
               {cliente.telefone && <span>{cliente.telefone}</span>}
             </div>
           </div>
