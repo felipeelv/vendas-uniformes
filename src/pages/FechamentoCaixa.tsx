@@ -16,7 +16,7 @@ export default function FechamentoCaixa() {
   const vendasDoDia = useMemo(() => {
     return vendas.filter(v => {
       const dataVenda = new Date(v.data).toISOString().split('T')[0];
-      return dataVenda === dataSelecionada;
+      return dataVenda === dataSelecionada && v.canal === 'presencial';
     });
   }, [vendas, dataSelecionada]);
 

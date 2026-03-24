@@ -729,7 +729,7 @@ export const useStore = create<StoreState>((set, get) => ({
     const jaFechado = state.fechamentosCaixa.find(f => f.data === data && f.status === 'fechado');
     if (jaFechado) return;
 
-    const vendasDoDia = state.vendas.filter(v => getDateStr(new Date(v.data)) === data);
+    const vendasDoDia = state.vendas.filter(v => getDateStr(new Date(v.data)) === data && v.canal === 'presencial');
     const vendas = vendasDoDia.filter(v => v.tipoVenda === 'venda');
     const trocas = vendasDoDia.filter(v => v.tipoVenda === 'troca');
 
