@@ -271,7 +271,7 @@ export default function LojaVirtual() {
             {(categoryFilter !== 'all' || searchQuery) && (
               <button
                 onClick={() => { setCategoryFilter('all'); setSearchQuery(''); }}
-                className="text-emerald-600 font-bold text-sm hover:underline"
+                className="text-eleve-teal-dark font-bold text-sm hover:underline"
               >
                 Limpar filtros
               </button>

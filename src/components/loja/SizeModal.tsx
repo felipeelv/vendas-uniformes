@@ -64,14 +64,14 @@ export default function SizeModal({
             </div>
           )}
           <div className="flex-1 min-w-0 flex flex-col justify-center">
-            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1">
+            <p className="text-[10px] font-bold text-eleve-teal-dark uppercase tracking-widest mb-1">
               {group.categoria}
             </p>
             <h3 className="text-lg font-bold text-slate-900 leading-tight">
               {group.cor ? `${group.nome} - ${group.cor}` : group.nome}
             </h3>
             {totalNoCarrinho > 0 && (
-              <p className="text-xs font-semibold text-emerald-600 mt-2 flex items-center gap-1">
+              <p className="text-xs font-semibold text-eleve-teal-dark mt-2 flex items-center gap-1">
                 <ShoppingCart className="w-3.5 h-3.5" />
                 {totalNoCarrinho} no carrinho
               </p>
@@ -101,10 +101,10 @@ export default function SizeModal({
                   key={variante.id}
                   className={`flex items-center justify-between p-3.5 rounded-xl border-2 transition-all ${
                     noCarrinho > 0
-                      ? 'border-emerald-200 bg-emerald-50/50'
+                      ? 'border-eleve-teal/30 bg-eleve-teal/5'
                       : semEstoque
                       ? 'border-slate-100 bg-slate-50 opacity-50'
-                      : 'border-slate-100 bg-white hover:border-emerald-200'
+                      : 'border-slate-100 bg-white hover:border-eleve-teal/30'
                   }`}
                 >
                   {/* Size info */}
@@ -138,7 +138,7 @@ export default function SizeModal({
                       onClick={() => handleAdd(variante)}
                       className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
                         isJustAdded
-                          ? 'bg-emerald-500 text-white'
+                          ? 'bg-eleve-teal text-white'
                           : 'bg-slate-900 hover:bg-slate-800 text-white'
                       }`}
                     >
@@ -149,7 +149,7 @@ export default function SizeModal({
                       )}
                     </button>
                   ) : (
-                    <div className="flex items-center gap-1 bg-white rounded-xl p-1 border border-emerald-200 shadow-sm">
+                    <div className="flex items-center gap-1 bg-white rounded-xl p-1 border border-eleve-teal/30 shadow-sm">
                       <button
                         onClick={() => onUpdateCart(variante.id, noCarrinho - 1)}
                         className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-red-500 transition-colors"
@@ -162,7 +162,7 @@ export default function SizeModal({
                       <button
                         onClick={() => handleAdd(variante)}
                         disabled={noCarrinho >= variante.quantidade}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-emerald-50 text-emerald-600 transition-colors disabled:opacity-30"
+                        className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-eleve-teal/10 text-eleve-teal-dark transition-colors disabled:opacity-30"
                       >
                         <Plus className="w-3.5 h-3.5" />
                       </button>
@@ -184,7 +184,7 @@ export default function SizeModal({
           </button>
           <button
             onClick={onGoToCart}
-            className="flex-1 py-3.5 rounded-xl font-bold text-sm bg-emerald-500 hover:bg-emerald-600 text-white transition-colors shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
+            className="flex-1 py-3.5 rounded-xl font-bold text-sm bg-eleve-teal hover:bg-eleve-teal-dark text-white transition-colors shadow-lg shadow-eleve-teal/20 flex items-center justify-center gap-2"
           >
             <ShoppingCart className="w-4 h-4" />
             Ver Carrinho

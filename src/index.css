@@ -3,10 +3,19 @@
 @theme {
   --color-primary: #aa3bff;
   --color-secondary: #08060d;
+
+  /* Eleve Brand Colors */
+  --color-eleve-teal: #3DBFB8;
+  --color-eleve-teal-dark: #2FA8A1;
+  --color-eleve-teal-light: #6DD4CF;
+  --color-eleve-orange: #E8622A;
+  --color-eleve-gold: #E8A825;
+  --color-eleve-green: #5BA08A;
+  --color-eleve-charcoal: #4A4A4A;
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Neue Montreal', 'Inter', system-ui, -apple-system, sans-serif;
   background-color: #f8fafc;
   color: #0f172a;
 }
@@ -76,6 +85,6 @@ html {
 
 /* Selection color */
 ::selection {
-  background-color: #6ee7b7;
-  color: #064e3b;
+  background-color: #3DBFB8;
+  color: #fff;
 }
