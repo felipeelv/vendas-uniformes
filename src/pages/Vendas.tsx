@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useStore } from '../store/useStore';
+import { useStore, formatTurma } from '../store/useStore';
 import type { Produto } from '../store/useStore';
 import { ShoppingCart, Plus, Minus, Search, CheckCircle2, ChevronRight, ChevronLeft, ImageOff, Trash2, X, RefreshCw, ArrowDownLeft, Lock, QrCode, CreditCard, Banknote, Package, DollarSign } from 'lucide-react';
 
@@ -27,6 +27,7 @@ export default function Vendas() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoriaFilter, setCategoriaFilter] = useState<string>('Todas');
   const [clienteSelecionado, setClienteSelecionado] = useState<string>('');
+  const [filtroTurma, setFiltroTurma] = useState('');
 
   const [carrinho, setCarrinho] = useState<Record<string, number>>({});
   const [vendaSucesso, setVendaSucesso] = useState(false);
@@ -56,6 +57,9 @@ export default function Vendas() {
   const caixaFechado = isCaixaFechado(hoje);
 
   const categorias = ['Todas', ...Array.from(new Set(produtos.map(p => p.categoria)))];
+
+  const turmasUnicas = [...new Set(clientes.map(c => c.turma).filter(Boolean))].sort();
+  const clientesFiltrados = filtroTurma ? clientes.filter(c => c.turma === filtroTurma) : clientes;
 
   const produtoGroups = useMemo(() => {
     const groups = new Map<string, Produto[]>();
@@ -743,14 +747,26 @@ export default function Vendas() {
         <div className="p-5 border-b border-slate-100 bg-slate-50/50 shrink-0 space-y-3">
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Cliente / Aluno <span className="text-rose-500">*</span></label>
+            <div className="flex gap-2 mb-2">
+              <select
+                value={filtroTurma}
+                onChange={e => { setFiltroTurma(e.target.value); setClienteSelecionado(''); }}
+                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm"
+              >
+                <option value="">Todas as turmas</option>
+                {turmasUnicas.map(t => (
+                  <option key={t} value={t}>{formatTurma(t)}</option>
+                ))}
+              </select>
+            </div>
             <select
               value={clienteSelecionado}
               onChange={e => setClienteSelecionado(e.target.value)}
               className={`w-full px-3 py-2.5 bg-white border rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm transition-colors ${!clienteSelecionado ? 'border-rose-300' : 'border-slate-200'}`}
             >
               <option value="">Selecione o aluno...</option>
-              {clientes.map(c => (
-                <option key={c.id} value={c.id}>{c.nome}{c.turma ? ` - ${c.turma}` : ''}</option>
+              {clientesFiltrados.map(c => (
+                <option key={c.id} value={c.id}>{c.nome}{c.turma ? ` - ${formatTurma(c.turma)}` : ''}</option>
               ))}
             </select>
             {!clienteSelecionado && carrinhoItens.length > 0 && (

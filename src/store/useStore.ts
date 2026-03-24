@@ -2,6 +2,10 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 
 export const TAMANHOS_PADRAO = ['2', '4', '6', '8', '10', '12', '14', '16', 'PP', 'P', 'M', 'G', 'GG', 'XG', 'G1'] as const;
+
+export function formatTurma(turma: string): string {
+  return turma.replace(/^(\d+)([A-Za-z])/, '$1º$2');
+}
 export type Categoria = 'Camiseta' | 'Calça' | 'Bermuda' | 'Moletom' | 'Casaco' | 'Short Saia' | 'Calça Legging' | 'Blusa';
 export type TipoVenda = 'venda' | 'troca' | 'devolucao';
 export type MetodoPagamento = 'PIX' | 'DEBITO' | 'CREDITO_VISTA' | 'CREDITO_PARCELADO' | 'DINHEIRO';
@@ -132,7 +136,8 @@ interface StoreState {
     clienteId?: string,
     clienteNome?: string,
     parcelas?: number,
-    creditoUsado?: number
+    creditoUsado?: number,
+    canal?: CanalVenda
   ) => void;
   registrarTroca: (
     itensEntrada: ItemEntrada[],
@@ -443,13 +448,18 @@ export const useStore = create<StoreState>((set, get) => ({
     }));
   },
 
-  registrarVenda: async (itens, metodoPagamento, clienteId, clienteNome, parcelas, creditoUsado) => {
+  registrarVenda: async (itens, metodoPagamento, clienteId, clienteNome, parcelas, creditoUsado, canal) => {
     if (!supabase) return;
     const vendedor = get().usuarioAtivo;
-    if (!vendedor || itens.length === 0) return;
+    if (itens.length === 0) return;
+    const isOnline = (canal || 'presencial') === 'online';
+    if (!isOnline && !vendedor) return;
 
-    const hoje = getDateStr(new Date());
-    if (get().isCaixaFechado(hoje)) return;
+    // Only check caixa for presencial sales
+    if ((canal || 'presencial') === 'presencial') {
+      const hoje = getDateStr(new Date());
+      if (get().isCaixaFechado(hoje)) return;
+    }
 
     const state = get();
     const primeiroProduto = state.produtos.find(p => p.id === itens[0].produtoId);
@@ -465,11 +475,11 @@ export const useStore = create<StoreState>((set, get) => ({
       quantidade: itens.reduce((acc, item) => acc + item.quantidade, 0),
       valor_total: totalGeral,
       data: new Date().toISOString(),
-      vendedor_id: vendedor.id,
-      vendedor_nome: vendedor.nome,
+      vendedor_id: vendedor?.id || null,
+      vendedor_nome: vendedor?.nome || 'Loja Online',
       cliente_id: clienteId || null,
       cliente_nome: clienteNome || null,
-      canal: 'presencial',
+      canal: canal || 'presencial',
     }).select().single();
 
     if (!vendaRow) return;
