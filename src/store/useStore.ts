@@ -466,7 +466,7 @@ export const useStore = create<StoreState>((set, get) => ({
     const totalGeral = itens.reduce((acc, item) => acc + item.valorTotal, 0);
 
     // Inserir venda
-    const { data: vendaRow } = await supabase.from('vendas').insert({
+    const { data: vendaRow, error } = await supabase.from('vendas').insert({
       tipo_venda: 'venda',
       metodo_pagamento: metodoPagamento,
       parcelas: parcelas || null,
@@ -481,6 +481,12 @@ export const useStore = create<StoreState>((set, get) => ({
       cliente_nome: clienteNome || null,
       canal: canal || 'presencial',
     }).select().single();
+
+    if (error) {
+      console.error('Erro ao registrar venda:', error);
+      alert('Ocorreu um erro ao salvar a venda no banco de dados. Por favor, tente novamente.');
+      return;
+    }
 
     if (!vendaRow) return;
 
@@ -550,7 +556,7 @@ export const useStore = create<StoreState>((set, get) => ({
       : null;
 
     // Inserir venda (troca)
-    const { data: vendaRow } = await supabase.from('vendas').insert({
+    const { data: vendaRow, error } = await supabase.from('vendas').insert({
       tipo_venda: 'troca',
       metodo_pagamento: metodoPagamento,
       parcelas: parcelas || null,
@@ -565,6 +571,12 @@ export const useStore = create<StoreState>((set, get) => ({
       cliente_nome: clienteNome || null,
       canal: 'presencial',
     }).select().single();
+
+    if (error) {
+      console.error('Erro ao registrar troca:', error);
+      alert('Ocorreu um erro ao salvar a troca. Por favor, tente novamente.');
+      return;
+    }
 
     if (!vendaRow) return;
 
@@ -635,7 +647,7 @@ export const useStore = create<StoreState>((set, get) => ({
     const valorCredito = produto.precoVenda * quantidade;
 
     // Insert venda record as devolucao
-    const { data: vendaRow } = await supabase.from('vendas').insert({
+    const { data: vendaRow, error } = await supabase.from('vendas').insert({
       tipo_venda: 'devolucao',
       metodo_pagamento: 'DINHEIRO',
       produto_id: produtoId,
@@ -649,6 +661,12 @@ export const useStore = create<StoreState>((set, get) => ({
       cliente_nome: clienteNome,
       canal: 'presencial',
     }).select().single();
+
+    if (error) {
+      console.error('Erro ao registrar devolução:', error);
+      alert('Ocorreu um erro ao salvar a devolução. Por favor, tente novamente.');
+      return;
+    }
 
     if (!vendaRow) return;
 
