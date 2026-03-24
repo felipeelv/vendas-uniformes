@@ -154,7 +154,7 @@ export default function LojaVirtual() {
       clienteId = clienteExistente.id;
     } else {
       await addCliente({
-        nome: `${formData.nome} (Resp: ${formData.aluno})`,
+        nome: formData.aluno,
         turma: '',
         telefone: formData.telefone,
         documento: 'Site',
@@ -170,18 +170,10 @@ export default function LojaVirtual() {
       quantidade: qtd,
       valorTotal: produto.precoVenda * qtd,
     }));
-    registrarVenda(itens, 'PIX', clienteId, formData.nome);
+    registrarVenda(itens, 'PIX', clienteId, formData.aluno, undefined, undefined, 'online');
 
     setView('success');
     setCarrinho({});
-  };
-
-  const handleWhatsApp = () => {
-    const texto = encodeURIComponent(
-      `Olá! Gostaria de confirmar meu pedido feito pela loja virtual.\n*Responsável:* ${formData.nome}\n*Aluno:* ${formData.aluno}\n*Total:* ${formatBRL(totalVenda)}\n\nAguarde, enviaremos os detalhes para pagamento.`
-    );
-    window.open(`https://wa.me/5511999999999?text=${texto}`, '_blank');
-    resetToShop();
   };
 
   const resetToShop = () => {
@@ -200,7 +192,6 @@ export default function LojaVirtual() {
         formData={formData}
         totalVenda={totalVenda}
         formatBRL={formatBRL}
-        onWhatsApp={handleWhatsApp}
         onContinueShopping={resetToShop}
       />
     );

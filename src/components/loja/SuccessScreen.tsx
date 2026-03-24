@@ -1,10 +1,9 @@
-import { CheckCircle2, Phone, ShoppingBag, PartyPopper } from 'lucide-react';
+import { CheckCircle2, ShoppingBag, PartyPopper } from 'lucide-react';
 
 interface SuccessScreenProps {
   formData: { nome: string; telefone: string; aluno: string };
   totalVenda: number;
   formatBRL: (v: number) => string;
-  onWhatsApp: () => void;
   onContinueShopping: () => void;
 }
 
@@ -12,7 +11,6 @@ export default function SuccessScreen({
   formData,
   totalVenda,
   formatBRL,
-  onWhatsApp,
   onContinueShopping,
 }: SuccessScreenProps) {
   return (
@@ -30,18 +28,18 @@ export default function SuccessScreen({
         </div>
 
         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mb-2">
-          Pedido Recebido!
+          Pedido Confirmado!
         </h1>
         <p className="text-slate-500 mb-6 text-sm sm:text-base leading-relaxed">
           {formData.nome}, seu pedido de{' '}
           <strong className="text-slate-700">{formatBRL(totalVenda)}</strong>{' '}
-          foi registrado. Confirme via WhatsApp para concluir.
+          foi registrado com sucesso. A entrega sera feita na escola.
         </p>
 
         {/* Order info */}
         <div className="bg-slate-50 rounded-xl p-4 mb-6 text-left space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-slate-400 font-medium">Responsável</span>
+            <span className="text-slate-400 font-medium">Responsavel</span>
             <span className="font-semibold text-slate-700">{formData.nome}</span>
           </div>
           <div className="flex justify-between text-sm">
@@ -55,18 +53,10 @@ export default function SuccessScreen({
         </div>
 
         <button
-          onClick={onWhatsApp}
-          className="w-full bg-eleve-teal hover:bg-eleve-teal-dark text-white font-bold py-4 rounded-xl shadow-lg shadow-eleve-teal/20 mb-3 transition-all hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 text-base"
-        >
-          <Phone className="w-5 h-5" />
-          Confirmar no WhatsApp
-        </button>
-
-        <button
           onClick={onContinueShopping}
-          className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2"
+          className="w-full bg-eleve-teal hover:bg-eleve-teal-dark text-white font-bold py-4 rounded-xl shadow-lg shadow-eleve-teal/20 transition-all hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 text-base"
         >
-          <ShoppingBag className="w-4 h-4" />
+          <ShoppingBag className="w-5 h-5" />
           Continuar Comprando
         </button>
       </div>
