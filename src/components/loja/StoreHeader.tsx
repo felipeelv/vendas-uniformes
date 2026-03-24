@@ -14,12 +14,12 @@ export default function StoreHeader({ totalPecas, onOpenCart, searchQuery, onSea
   return (
     <header className="sticky top-0 z-40">
       {/* Top promo strip */}
-      <div className="bg-emerald-600 text-white text-center text-[11px] sm:text-xs font-semibold py-1.5 px-4 tracking-wide">
+      <div className="bg-eleve-green text-white text-center text-[11px] sm:text-xs font-semibold py-1.5 px-4 tracking-wide">
         Entrega grátis na escola &nbsp;·&nbsp; Pagamento via PIX &nbsp;·&nbsp; Troca garantida
       </div>
 
       {/* Main header */}
-      <div className="bg-emerald-500">
+      <div className="bg-eleve-teal">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3 sm:gap-5">
           {/* Logo */}
           <div className="flex items-center gap-2.5 shrink-0 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
@@ -33,7 +33,7 @@ export default function StoreHeader({ totalPecas, onOpenCart, searchQuery, onSea
             />
             <div className="hidden sm:block leading-tight">
               <span className="font-black text-lg text-white tracking-tight block">Eleve</span>
-              <span className="text-[10px] font-medium text-emerald-100/80 -mt-0.5 block">Uniformes Escolares</span>
+              <span className="text-[10px] font-medium text-white/70 -mt-0.5 block">Uniformes Escolares</span>
             </div>
           </div>
 
@@ -45,7 +45,7 @@ export default function StoreHeader({ totalPecas, onOpenCart, searchQuery, onSea
                 placeholder="Buscar uniformes..."
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                className="w-full pl-4 pr-12 py-2.5 sm:py-3 bg-white rounded-lg text-sm font-medium text-slate-700 placeholder:text-slate-400 outline-none shadow-sm focus:ring-2 focus:ring-emerald-300"
+                className="w-full pl-4 pr-12 py-2.5 sm:py-3 bg-white rounded-lg text-sm font-medium text-slate-700 placeholder:text-slate-400 outline-none shadow-sm focus:ring-2 focus:ring-eleve-teal-light"
               />
               {searchQuery ? (
                 <button
@@ -55,7 +55,7 @@ export default function StoreHeader({ totalPecas, onOpenCart, searchQuery, onSea
                   <X className="w-4 h-4" />
                 </button>
               ) : null}
-              <button className="absolute right-0 top-0 h-full px-3 bg-emerald-600 hover:bg-emerald-700 rounded-r-lg transition-colors flex items-center justify-center">
+              <button className="absolute right-0 top-0 h-full px-3 bg-eleve-teal-dark hover:bg-eleve-green rounded-r-lg transition-colors flex items-center justify-center">
                 <Search className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </button>
             </div>
@@ -66,11 +66,11 @@ export default function StoreHeader({ totalPecas, onOpenCart, searchQuery, onSea
             {/* Cart Button */}
             <button
               onClick={onOpenCart}
-              className="relative p-2.5 text-white hover:bg-emerald-600/50 rounded-lg transition-colors flex items-center gap-2"
+              className="relative p-2.5 text-white hover:bg-white/15 rounded-lg transition-colors flex items-center gap-2"
             >
               <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />
               {totalPecas > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 sm:top-0 sm:right-0 bg-red-500 text-white text-[10px] font-black min-w-[20px] h-5 flex items-center justify-center rounded-full border-2 border-emerald-500 shadow-sm">
+                <span className="absolute -top-0.5 -right-0.5 sm:top-0 sm:right-0 bg-eleve-orange text-white text-[10px] font-black min-w-[20px] h-5 flex items-center justify-center rounded-full border-2 border-eleve-teal shadow-sm">
                   {totalPecas}
                 </span>
               )}
@@ -82,7 +82,7 @@ export default function StoreHeader({ totalPecas, onOpenCart, searchQuery, onSea
 
       {/* Mobile search - expandable for extra small screens if needed */}
       {searchOpen && (
-        <div className="sm:hidden bg-emerald-500 px-4 pb-3">
+        <div className="sm:hidden bg-eleve-teal px-4 pb-3">
           <div className="relative">
             <input
               type="text"

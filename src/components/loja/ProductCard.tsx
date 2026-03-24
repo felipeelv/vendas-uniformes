@@ -77,7 +77,7 @@ export default function ProductCard({
         {/* Share button */}
         <button
           onClick={handleShare}
-          className="absolute top-3 right-3 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-400 hover:text-emerald-600 hover:bg-white shadow-sm opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110"
+          className="absolute top-3 right-3 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-400 hover:text-eleve-teal-dark hover:bg-white shadow-sm opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110"
           title="Compartilhar no WhatsApp"
         >
           <Share2 className="w-3.5 h-3.5" />
@@ -93,7 +93,7 @@ export default function ProductCard({
 
       {/* Info */}
       <div className="p-4 flex-1 flex flex-col">
-        <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1">
+        <p className="text-[10px] font-bold text-eleve-teal-dark uppercase tracking-widest mb-1">
           {categoria}
         </p>
         <h3 className="text-sm sm:text-base font-bold text-slate-800 leading-tight mb-3 flex-1">

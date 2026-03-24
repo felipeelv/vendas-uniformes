@@ -47,8 +47,8 @@ export default function CartDrawer({
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
-              <ShoppingCart className="w-5 h-5 text-emerald-600" />
+            <div className="w-10 h-10 rounded-xl bg-eleve-teal/10 flex items-center justify-center">
+              <ShoppingCart className="w-5 h-5 text-eleve-teal-dark" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900">Seu Carrinho</h2>
@@ -78,7 +78,7 @@ export default function CartDrawer({
               </p>
               <button
                 onClick={onContinueShopping}
-                className="text-emerald-600 font-bold text-sm hover:underline"
+                className="text-eleve-teal-dark font-bold text-sm hover:underline"
               >
                 Ver Produtos
               </button>
@@ -129,7 +129,7 @@ export default function CartDrawer({
                               Math.min(produto.quantidade, qtd + 1)
                             )
                           }
-                          className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-emerald-600 transition-colors"
+                          className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-eleve-teal-dark transition-colors"
                         >
                           <Plus className="w-3 h-3" />
                         </button>
@@ -165,7 +165,7 @@ export default function CartDrawer({
             </div>
             <button
               onClick={onCheckout}
-              className="w-full py-4 rounded-xl font-bold text-base bg-emerald-500 hover:bg-emerald-600 text-white shadow-xl shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 hover:-translate-y-0.5 active:translate-y-0"
+              className="w-full py-4 rounded-xl font-bold text-base bg-eleve-teal hover:bg-eleve-teal-dark text-white shadow-xl shadow-eleve-teal/20 transition-all flex items-center justify-center gap-2 hover:-translate-y-0.5 active:translate-y-0"
             >
               Finalizar Compra
               <ArrowRight className="w-4 h-4" />
