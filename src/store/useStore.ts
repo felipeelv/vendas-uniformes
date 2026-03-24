@@ -6,6 +6,7 @@ export type Categoria = 'Camiseta' | 'Calça' | 'Bermuda' | 'Moletom' | 'Casaco'
 export type TipoVenda = 'venda' | 'troca' | 'devolucao';
 export type MetodoPagamento = 'PIX' | 'DEBITO' | 'CREDITO_VISTA' | 'CREDITO_PARCELADO' | 'DINHEIRO';
 export type TipoItemVenda = 'saida' | 'entrada';
+export type CanalVenda = 'presencial' | 'online';
 
 export interface Produto {
   id: string;
@@ -54,6 +55,7 @@ export interface Venda {
   vendedorNome: string;
   clienteId?: string;
   clienteNome?: string;
+  canal: CanalVenda;
 }
 
 export interface FechamentoCaixa {
@@ -193,6 +195,7 @@ function dbToVenda(row: any, itens: VendaItem[]): Venda {
     vendedorNome: row.vendedor_nome || '',
     clienteId: row.cliente_id || undefined,
     clienteNome: row.cliente_nome || undefined,
+    canal: row.canal || 'presencial',
   };
 }
 
@@ -466,6 +469,7 @@ export const useStore = create<StoreState>((set, get) => ({
       vendedor_nome: vendedor.nome,
       cliente_id: clienteId || null,
       cliente_nome: clienteNome || null,
+      canal: 'presencial',
     }).select().single();
 
     if (!vendaRow) return;
@@ -549,6 +553,7 @@ export const useStore = create<StoreState>((set, get) => ({
       vendedor_nome: vendedor.nome,
       cliente_id: clienteId || null,
       cliente_nome: clienteNome || null,
+      canal: 'presencial',
     }).select().single();
 
     if (!vendaRow) return;
@@ -632,6 +637,7 @@ export const useStore = create<StoreState>((set, get) => ({
       vendedor_nome: vendedor.nome,
       cliente_id: clienteId,
       cliente_nome: clienteNome,
+      canal: 'presencial',
     }).select().single();
 
     if (!vendaRow) return;
@@ -723,7 +729,7 @@ export const useStore = create<StoreState>((set, get) => ({
     const jaFechado = state.fechamentosCaixa.find(f => f.data === data && f.status === 'fechado');
     if (jaFechado) return;
 
-    const vendasDoDia = state.vendas.filter(v => getDateStr(new Date(v.data)) === data);
+    const vendasDoDia = state.vendas.filter(v => getDateStr(new Date(v.data)) === data && v.canal === 'presencial');
     const vendas = vendasDoDia.filter(v => v.tipoVenda === 'venda');
     const trocas = vendasDoDia.filter(v => v.tipoVenda === 'troca');
 
