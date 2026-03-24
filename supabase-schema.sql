@@ -50,6 +50,7 @@ CREATE TABLE vendas (
   vendedor_nome TEXT NOT NULL,
   cliente_id UUID REFERENCES clientes(id) ON DELETE SET NULL,
   cliente_nome TEXT,
+  canal TEXT DEFAULT 'presencial',
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
