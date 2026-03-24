@@ -386,7 +386,7 @@ function NovaDespesaModal({ onClose, onAdd }: { onClose: () => void, onAdd: (d: 
             <label className="block text-sm font-medium mb-1.5">Categoria</label>
             <select
               value={formData.categoria}
-              onChange={e => setFormData({...formData, categoria: e.target.value as any})}
+              onChange={e => setFormData({...formData, categoria: e.target.value as Despesa['categoria']})}
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
             >
               <option value="Fixa">Despesa Fixa (ex. Aluguel)</option>
